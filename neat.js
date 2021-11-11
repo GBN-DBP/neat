@@ -60,13 +60,6 @@ function setupInterface(data, file, urls) {
 
     // private variables of app
 
-    let displayRows=15
-    let startIndex=0;
-    let endIndex=displayRows;
-
-    let do_not_display = new Set(['url_id', 'left', 'right', 'top', 'bottom', 'ocrconf', 'conf']);
-    let tagClasses = 'ner_per ner_loc ner_org ner_work ner_conf ner_evt ner_todo';
-
     let has_changes = false;
 
     let save_timeout = null;
@@ -232,30 +225,24 @@ function setupInterface(data, file, urls) {
             min_top = (parseInt(data.data[i]['top']) < min_top) ? parseInt(data.data[i]['top']) : min_top;
             max_bottom = (parseInt(data.data[i]['bottom']) > max_bottom) ? parseInt(data.data[i]['bottom']) : max_bottom;
 
-            let token_col = "TOKEN";
-            if (data.meta.fields.includes('TEXT')) {
-                token_col = "TEXT";
-            }
-
-            if ((data.data[i][token_col] == null) || (data.data[i][token_col].toString().length == 0)){
-                word_pos = 0;
+            for (let token_col of data.meta.fields.filter(value => tokenCols.has(value))) {
+                if ((data.data[i][token_col] == null) || (data.data[i][token_col].toString().length == 0)){
+                    word_pos = 0;
+                }
             }
 
             if (data.meta.fields.includes('No.')) {
                 data.data[i]['No.'] = word_pos;
             }
 
-            if (data.data[i][token_col] == null) data.data[i][token_col] = '';
-            data.data[i][token_col] = data.data[i][token_col].toString().replace(/(\r\n|\n|\r)/gm, "");
+            for (let editable_col of data.meta.fields.filter(value => editableCols.has(value))) {
+                if (data.data[i][editable_col] == null) data.data[i][editable_col] = '';
+                data.data[i][editable_col] = data.data[i][editable_col].toString().replace(/(\r\n|\n|\r)/gm, "");
+            }
 
-            if (data.meta.fields.includes('NE-TAG')) {
-                if (data.data[i]['ID'] == null) data.data[i]['ID'] = '';
-                if (data.data[i]['NE-TAG'] == null) data.data[i]['NE-TAG'] = '';
-                if (data.data[i]['NE-EMB'] == null) data.data[i]['NE-EMB'] = '';
-
-                data.data[i]['ID'] = data.data[i]['ID'].toString().replace(/(\r\n|\n|\r)/gm, "");
-                data.data[i]['NE-TAG'] = data.data[i]['NE-TAG'].toString().replace(/(\r\n|\n|\r)/gm, "");
-                data.data[i]['NE-EMB'] = data.data[i]['NE-EMB'].toString().replace(/(\r\n|\n|\r)/gm, "");
+            for (let tag_col of data.meta.fields.filter(value => tagCols.has(value))) {
+                if (data.data[i][tag_col] == null) data.data[i][tag_col] = '';
+                data.data[i][tag_col] = data.data[i][tag_col].toString().replace(/(\r\n|\n|\r)/gm, "");
             }
 
             word_pos++;
@@ -268,16 +255,20 @@ function setupInterface(data, file, urls) {
 
         if (action == null) return;
 
-        if (data.data[nRow]['TOKEN'] == null) data.data[nRow]['TOKEN'] = '';
+        for (let token_col of data.meta.fields.filter(value => tokenCols.has(value))) {
+            if (data.data[nRow][token_col] == null) data.data[nRow][token_col] = '';
+        }
 
         if (action.includes('merge')) {
 
             if (nRow < 1) return;
 
-            if (data.data[nRow - 1]['TOKEN'] == null) data.data[nRow - 1]['TOKEN'] = '';
+            for (let token_col of data.meta.fields.filter(value => tokenCols.has(value))) {
+                if (data.data[nRow - 1][token_col] == null) data.data[nRow - 1][token_col] = '';
 
-            data.data[nRow - 1]['TOKEN'] =
-                data.data[nRow - 1]['TOKEN'].toString() + data.data[nRow]['TOKEN'].toString();
+                data.data[nRow - 1][token_col] =
+                    data.data[nRow - 1][token_col].toString() + data.data[nRow][token_col].toString();
+            }
 
             data.data.splice(nRow, 1);
         }
@@ -291,10 +282,13 @@ function setupInterface(data, file, urls) {
         else if (action.includes('sentence')) {
 
             let new_line = JSON.parse(JSON.stringify(data.data[nRow]));
-            new_line['TOKEN'] = '';
-            new_line['NE-TAG'] = 'O';
-            new_line['NE-EMB'] = 'O';
-            new_line['ID'] = '';
+
+            for (let editable_col of data.meta.fields.filter(value => editableCols.has(value))) {
+                new_line[editable_col] = '';
+            }
+            for (let tag_col of data.meta.fields.filter(value => tagCols.has(value))) {
+                new_line[tag_col] = 'O';
+            }
 
             data.data.splice(nRow, 0, new_line);
         }
@@ -491,7 +485,7 @@ function setupInterface(data, file, urls) {
 
                           let listener = new window.keypress.Listener(td, listener_defaults);
 
-                          if (do_not_display.has(column)) return
+                          if (hiddenCols.has(column)) return
 
                           let clickAction = function() { console.log('Do something different');}
 
@@ -503,10 +497,8 @@ function setupInterface(data, file, urls) {
 
                                 td.text(content);
 
-                                if (    ((column == 'TEXT') || (column == 'TOKEN'))
-                                    && (data.meta.fields.includes('ocrconf'))) {
-
-                                    td.css('background-color', data.data[tableInfo.nRow]['ocrconf']);
+                                if ((tokenCols.has(column)) && (data.meta.fields.some(value => confCols.has(value)))) {
+                                    td.css('background-color', data.meta.fields.find(value => confCols.has(value)));
                                 }
 
                             }; })(column);
@@ -523,19 +515,19 @@ function setupInterface(data, file, urls) {
                           if (column == 'No.') {
                             clickAction = makeLineSplitMerge;
                           }
-                          else if ((column == 'TEXT') || (column == 'TOKEN') || (column == 'ID'))  {
+                          else if (editableCols.has(column))  {
 
                             clickAction = makeTdEditable;
 
                             listener.simple_combo('enter', function() { $(td).click(); });
 
-                            if (column == 'ID') {
+                            if (linkCols.has(column)) {
                                 fillAction =
                                     function(td) {
 
                                         let tableInfo = $(td).data('tableInfo');
 
-                                        let content = data.data[tableInfo.nRow]['ID'];
+                                        let content = data.data[tableInfo.nRow][column];
 
                                         if (String(content).match(/^Q[0-9]+.*/g) == null) {
                                             td.text(content);
@@ -568,7 +560,7 @@ function setupInterface(data, file, urls) {
                                     };
                             }
                           }
-                          else if ((column == 'NE-TAG') || (column == 'NE-EMB')) {
+                          else if (tagCols.has(column)) {
                             clickAction = makeTagEdit;
 
                             function tagAction(tag) {
@@ -666,7 +658,7 @@ function setupInterface(data, file, urls) {
                   $.each(el,
                       function(column_name, content) {
 
-                          if (do_not_display.has(column_name)) return;
+                          if (hiddenCols.has(column_name)) return;
 
                           let td = $(columns[pColumn]);
 

@@ -1,3 +1,90 @@
+class Td {
+}
+
+class Row {
+    constructor (table, nRow, listener_defaults) {
+        this.table = table;
+        this.nRow = nRow;
+
+        this.data = $("<tr/>").data('tableInfo', { 'nRow': this.nRow });
+
+        this.data.focusin(() => {
+            updatePreview(this.table.data[this.data.data('tableInfo').nRow], this.table.urls);
+
+            $('#preview-rgn').css('transform', 'translate(0,' + (this.data.position().top + this.data.height()/2) + 'px)'
+                + ' translate(0%,-50%)')
+        });
+
+        this.data.append($('<td class="hover"/>').text(this.nRow).data('tableInfo', { 'nRow': this.nRow }));
+
+        this.setListener(listener_defaults)
+    }
+
+    setListener(defaults) {
+        this.listener = new window.keypress.Listener(this.data, defaults);
+
+        this.listener.register_many([{
+            keys: 's t',
+            on_keydown: () => this.table.sentenceAction(this.table, this.data.data('tableInfo').nRow),
+            is_sequence: true,
+            is_solitary: true,
+            is_exclusive: true
+        }, {
+            keys: 's p',
+            on_keydown: () => table.splitAction(this.table, this.data.data('tableInfo').nRow),
+            is_sequence: true,
+            is_solitary: true,
+            is_exclusive: true
+        }, {
+            keys: 'm e',
+            on_keydown: () => this.table.mergeAction(this.table, this.data.data('tableInfo').nRow),
+            is_sequence: true,
+            is_solitary: true,
+            is_exclusive: true
+        }, {
+            keys: 'd l',
+            on_keydown: () => this.table.deleteAction(this.table, this.data.data('tableInfo').nRow),
+            is_sequence: true,
+            is_solitary: true,
+            is_exclusive: true
+        }])
+    }
+
+    append(td) {
+        this.data.append(td)
+    }
+
+    getData() {
+        return this.data
+    }
+}
+
+class TableHead {
+    constructor (element, fields) {
+        this.element = element;
+        this.fields = fields;
+
+        this.fields.forEach((field) => {
+            let th = document.createElement('th');
+            th.id = field;
+
+            let d_flex = document.createElement('div');
+            d_flex.className = "d-flex align-items-center";
+
+            let flex_grow = document.createElement('div');
+            flex_grow.className = "flex-grow-1";
+            flex_grow.innerText = field;
+
+            d_flex.append(flex_grow);
+            th.append(d_flex);
+            $(this.element).append(th)
+        })
+    }
+}
+
+class TableBody {
+}
+
 let table = {
     displayRows: 15,
     startIndex: 0,
@@ -21,7 +108,7 @@ let table = {
     minTop: 1000000000,
     maxBottom: 0,
 
-    rows: null,
+    data: null,
     fields: null,
 
     urls: null,
@@ -31,7 +118,8 @@ let table = {
     editingTd: null,
 
     init: function (data, urls, listener_defaults, notifyChange) {
-        table.rows = data.data;
+        console.log(data);
+        table.data = data.data;
         table.fields = data.meta.fields;
         table.urls = urls;
         table.listener_defaults = listener_defaults;
@@ -39,49 +127,14 @@ let table = {
 
         table.sanitize();
 
+        let thead = new TableHead('#tablehead', ['No.', 'TOKEN', 'NE-TAG', 'NE-EMB', 'ID']);
+
         let editable_html =`<td class="editable hover">`;
 
         for (let nRow = table.startIndex; nRow < table.endIndex; ++nRow) {
-            let el = table.rows[nRow];
+            let el = table.data[nRow];
 
-            let row = $("<tr/>").data('tableInfo', { 'nRow': nRow });
-
-            row.focusin(function () {
-                updatePreview(table.rows[row.data('tableInfo').nRow], table.urls);
-
-                $('#preview-rgn').css('transform', 'translate(0,' + (row.position().top + row.height()/2) + 'px)'
-                    + ' translate(0%,-50%)')
-            });
-
-            row.append($('<td class="hover"/>').text(nRow).data('tableInfo', { 'nRow': nRow }));
-
-            let row_listener = new window.keypress.Listener(row, table.listener_defaults);
-
-            row_listener.register_many([{
-                keys: 's t',
-                on_keydown: () => table.sentenceAction(table, row.data('tableInfo').nRow),
-                is_sequence: true,
-                is_solitary: true,
-                is_exclusive: true
-            }, {
-                keys: 's p',
-                on_keydown: () => table.splitAction(table, row.data('tableInfo').nRow),
-                is_sequence: true,
-                is_solitary: true,
-                is_exclusive: true
-            }, {
-                keys: 'm e',
-                on_keydown: () => table.mergeAction(table, row.data('tableInfo').nRow),
-                is_sequence: true,
-                is_solitary: true,
-                is_exclusive: true
-            }, {
-                keys: 'd l',
-                on_keydown: () => table.deleteAction(table, row.data('tableInfo').nRow),
-                is_sequence: true,
-                is_solitary: true,
-                is_exclusive: true
-            }]);
+            let row = new Row(table, nRow, table.listener_defaults);
 
             $.each(el, (column, content) => {
                 let td = $(editable_html)
@@ -96,7 +149,7 @@ let table = {
                     return function(td) {
                         let tableInfo = $(td).data('tableInfo');
 
-                        let content = table.rows[tableInfo.nRow][tableInfo.column];
+                        let content = table.data[tableInfo.nRow][tableInfo.column];
 
                         td.text(content);
 
@@ -106,15 +159,6 @@ let table = {
 
                     }
                 })(column);
-
-                let head_html = `
-                <th id="${column}">
-                    <div class="d-flex align-items-center" ><div class="flex-grow-1">${column}</div></div>
-                </th>`;
-
-                if (!($("th#" + column.replace(/\./g, "\\.")).length)) {
-                    $("#tablehead").append(head_html);
-                }
 
                 if (column == table.nmbrField) {
                     clickAction = table.makeLineSplitMerge;
@@ -128,7 +172,7 @@ let table = {
                         fillAction = function(td) {
                             let tableInfo = $(td).data('tableInfo');
 
-                            let content = table.rows[tableInfo.nRow][column];
+                            let content = table.data[tableInfo.nRow][column];
 
                             if (String(content).match(/^Q[0-9]+.*/g) == null) {
                                 td.text(content);
@@ -164,7 +208,7 @@ let table = {
                     function tagAction(tag) {
                         tableInfo = $(td).data('tableInfo');
 
-                        table.rows[tableInfo.nRow][tableInfo.column] = tag;
+                        table.data[tableInfo.nRow][tableInfo.column] = tag;
 
                         td.html(tag);
                         table.colorCodeNETag();
@@ -202,7 +246,7 @@ let table = {
                 row.append(td)
             });
 
-            $("#table tbody").append(row);
+            $("#table tbody").append(row.getData());
         }
 
         table.colorCodeNETag();
@@ -217,7 +261,7 @@ let table = {
         );
 
         if ($("#docpos").val() != table.startIndex) {
-            $("#docpos").val(table.rows.length - table.startIndex)
+            $("#docpos").val(table.data.length - table.startIndex)
         }
     },
 
@@ -271,12 +315,12 @@ let table = {
     stepsForward: function (nrows) {
         if (table.editingTd != null) return;
 
-        if (table.endIndex + nrows < table.rows.length) {
+        if (table.endIndex + nrows < table.data.length) {
             table.endIndex += nrows;
             table.startIndex = table.endIndex - table.displayRows
         }
         else {
-            table.endIndex = table.rows.length;
+            table.endIndex = table.data.length;
             table.startIndex = table.endIndex - table.displayRows
         }
 
@@ -286,7 +330,7 @@ let table = {
     sentenceAction: function (table, nRow) {
         if (table.editingTd != null) return true;
 
-        let new_line = JSON.parse(JSON.stringify(table.rows[nRow]));
+        let new_line = JSON.parse(JSON.stringify(table.data[nRow]));
 
         table.getEditFields().forEach(col => {
             new_line[col] = ''
@@ -296,7 +340,7 @@ let table = {
             new_line[col] = 'O'
         });
 
-        table.rows.splice(nRow, 0, new_line);
+        table.data.splice(nRow, 0, new_line);
 
         table.sanitize();
         table.notifyChange();
@@ -309,10 +353,10 @@ let table = {
         if (nRow < 1) return;
 
         table.getTextFields().forEach(col => {
-            table.rows[nRow - 1][col] = table.rows[nRow - 1][col].toString() + table.rows[nRow][col].toString()
+            table.data[nRow - 1][col] = table.data[nRow - 1][col].toString() + table.data[nRow][col].toString()
         });
 
-        table.rows.splice(nRow, 1);
+        table.data.splice(nRow, 1);
 
         table.sanitize();
         table.notifyChange();
@@ -322,7 +366,7 @@ let table = {
     splitAction: function (table, nRow) {
         if (table.editingTd != null) return;
 
-        table.rows.splice(nRow, 0, JSON.parse(JSON.stringify(table.rows[nRow])));
+        table.data.splice(nRow, 0, JSON.parse(JSON.stringify(table.data[nRow])));
 
         table.sanitize();
         table.notifyChange();
@@ -332,7 +376,7 @@ let table = {
     deleteAction: function (table, nRow) {
         if (table.editingTd != null) return;
 
-        table.rows.splice(nRow, 1);
+        table.data.splice(nRow, 1);
 
         table.sanitize();
         table.notifyChange();
@@ -343,7 +387,7 @@ let table = {
         let tableInfo = $(td).data('tableInfo');
 
         table.editingTd = {
-            data: table.rows[tableInfo.nRow][tableInfo.column],
+            data: table.data[tableInfo.nRow][tableInfo.column],
             performAction: function (action) {
                 $(td).html(table.editingTd.data);
                 $(td).addClass('editable');
@@ -408,7 +452,7 @@ let table = {
                     if (isOk) {
                         let newValue = $('#edit-area').val();
 
-                        table.rows[tableInfo.nRow][tableInfo.column] = newValue;
+                        table.data[tableInfo.nRow][tableInfo.column] = newValue;
 
                         table.sanitize();
                         table.notifyChange();
@@ -430,7 +474,7 @@ let table = {
         textArea.className = "input";
         textArea.id = 'edit-area';
 
-        $(textArea).val(table.rows[tableInfo.nRow][tableInfo.column]);
+        $(textArea).val(table.data[tableInfo.nRow][tableInfo.column]);
         $(td).html('');
         $(td).append(textArea);
         textArea.focus();
@@ -466,7 +510,7 @@ let table = {
         let tableInfo = $(td).data('tableInfo');
 
         table.editingTd = {
-            data: table.rows[tableInfo.nRow][tableInfo.column],
+            data: table.data[tableInfo.nRow][tableInfo.column],
             finish: function(isOk) {
                 tableInfo.fillAction($(td))
 
@@ -514,7 +558,7 @@ let table = {
         $('#tagger').mouseleave( function(event) { table.editingTd.finish(false) });
 
         $('.type_select').click(function (event) {
-            table.rows[tableInfo.nRow][tableInfo.column] = $(event.target).text().trim();
+            table.data[tableInfo.nRow][tableInfo.column] = $(event.target).text().trim();
 
             table.editingTd.finish(true)
         })
@@ -553,7 +597,7 @@ let table = {
 
         let word_pos = 1;
 
-        table.rows.forEach(row => {
+        table.data.forEach(row => {
             updateBounds(row);
 
             table.getDataFields().forEach(col => {
@@ -601,7 +645,7 @@ let table = {
         let pRow = 0;
 
         for (let nRow = table.startIndex; nRow < table.endIndex; ++nRow) {
-            let el = table.rows[nRow];
+            let el = table.data[nRow];
 
             let row = $(rows[pRow]);
             let tableInfo = row.data('tableInfo');
@@ -639,11 +683,11 @@ let table = {
         table.colorCodeNETag();
 
         if ($("#docpos").val() != table.startIndex) {
-            $("#docpos").val(table.rows.length - table.startIndex)
+            $("#docpos").val(table.data.length - table.startIndex)
         }
 
         if ($(':focus').data('tableInfo')) {
-            updatePreview(table.rows[$(':focus').data('tableInfo').nRow], table.urls)
+            updatePreview(table.data[$(':focus').data('tableInfo').nRow], table.urls)
         }
     }
 }

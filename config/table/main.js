@@ -41,9 +41,8 @@ let table = {
 
         let editable_html =`<td class="editable hover">`;
 
-        $.each(table.rows, (nRow, el) => {
-            if (nRow < table.startIndex) return;
-            if (nRow >= table.endIndex) return;
+        for (let nRow = table.startIndex; nRow < table.endIndex; ++nRow) {
+            let el = table.rows[nRow];
 
             let row = $("<tr/>").data('tableInfo', { 'nRow': nRow });
 
@@ -204,7 +203,7 @@ let table = {
             });
 
             $("#table tbody").append(row);
-        });
+        }
 
         table.colorCodeNETag();
 

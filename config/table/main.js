@@ -58,61 +58,31 @@ let table = {
 
             let row_listener = new window.keypress.Listener(row, table.listener_defaults);
 
-            row_listener.register_many(
-            [
-                {
+            row_listener.register_many([{
                 keys: 's t',
-                on_keydown:
-                    function() {
-                        if (table.editingTd != null) return true;
-
-                        table.editAction(row.data('tableInfo').nRow, 'sentence');
-                    },
+                on_keydown: () => table.sentenceAction(table, row.data('tableInfo').nRow),
                 is_sequence: true,
                 is_solitary: true,
                 is_exclusive: true
-                },
-
-                {
+            }, {
                 keys: 's p',
-                on_keydown:
-                    function() {
-                        if (table.editingTd != null) return true;
-
-                        table.editAction(row.data('tableInfo').nRow, 'split');
-                    },
+                on_keydown: () => table.splitAction(table, row.data('tableInfo').nRow),
                 is_sequence: true,
                 is_solitary: true,
                 is_exclusive: true
-                },
-
-                {
+            }, {
                 keys: 'm e',
-                on_keydown:
-                    function() {
-                        if (table.editingTd != null) return true;
-
-                        table.editAction(row.data('tableInfo').nRow, 'merge');
-                    },
+                on_keydown: () => table.mergeAction(table, row.data('tableInfo').nRow),
                 is_sequence: true,
                 is_solitary: true,
                 is_exclusive: true
-                },
-
-                {
+            }, {
                 keys: 'd l',
-                on_keydown:
-                    function() {
-                        if (table.editingTd != null) return true;
-
-                        table.editAction(row.data('tableInfo').nRow, 'delete');
-                    },
+                on_keydown: () => table.deleteAction(table, row.data('tableInfo').nRow),
                 is_sequence: true,
                 is_solitary: true,
                 is_exclusive: true
-                }
-            ]
-            );
+            }]);
 
             $.each(el, (column, content) => {
                 let td = $(editable_html)
@@ -314,39 +284,56 @@ let table = {
         table.update()
     },
 
-    editAction: function(nRow, action) {
+    sentenceAction: function (table, nRow) {
+        if (table.editingTd != null) return true;
+
+        let new_line = JSON.parse(JSON.stringify(table.rows[nRow]));
+
+        table.getEditFields().forEach(col => {
+            new_line[col] = ''
+        });
+
+        table.getTagFields().forEach(col => {
+            new_line[col] = 'O'
+        });
+
+        table.rows.splice(nRow, 0, new_line);
+
+        table.sanitize();
+        table.notifyChange();
+        table.update()
+    },
+
+    mergeAction: function (table, nRow) {
         if (table.editingTd != null) return;
 
-        if (action == null) return;
+        if (nRow < 1) return;
 
-        if (action.includes('merge')) {
-            if (nRow < 1) return;
+        table.getTextFields().forEach(col => {
+            table.rows[nRow - 1][col] = table.rows[nRow - 1][col].toString() + table.rows[nRow][col].toString()
+        });
 
-            table.getTextFields().forEach(col => {
-                table.rows[nRow - 1][col] = table.rows[nRow - 1][col].toString() + table.rows[nRow][col].toString()
-            });
+        table.rows.splice(nRow, 1);
 
-            table.rows.splice(nRow, 1)
-        }
-        else if (action.includes('split')) {
-            table.rows.splice(nRow, 0, JSON.parse(JSON.stringify(table.rows[nRow])))
-        }
-        else if (action.includes('delete')) {
-            table.rows.splice(nRow, 1)
-        }
-        else if (action.includes('sentence')) {
-            let new_line = JSON.parse(JSON.stringify(table.rows[nRow]));
+        table.sanitize();
+        table.notifyChange();
+        table.update()
+    },
 
-            table.getEditFields().forEach(col => {
-                new_line[col] = ''
-            });
+    splitAction: function (table, nRow) {
+        if (table.editingTd != null) return;
 
-            table.getTagFields().forEach(col => {
-                new_line[col] = 'O'
-            });
+        table.rows.splice(nRow, 0, JSON.parse(JSON.stringify(table.rows[nRow])));
 
-            table.rows.splice(nRow, 0, new_line)
-        }
+        table.sanitize();
+        table.notifyChange();
+        table.update()
+    },
+
+    deleteAction: function (table, nRow) {
+        if (table.editingTd != null) return;
+
+        table.rows.splice(nRow, 1);
 
         table.sanitize();
         table.notifyChange();
@@ -358,33 +345,53 @@ let table = {
 
         table.editingTd = {
             data: table.rows[tableInfo.nRow][tableInfo.column],
-            finish: function(action, isOk) {
-
+            performAction: function (action) {
                 $(td).html(table.editingTd.data);
                 $(td).addClass('editable');
 
                 table.editingTd = null;
 
-                table.editAction(tableInfo.nRow, action)
+                switch (action) {
+                    case 'sentence':
+                        table.sentenceAction(table, tableInfo.nRow);
+                        break;
+                    case 'split':
+                        table.splitAction(table, tableInfo.nRow);
+                        break;
+                    case 'merge':
+                        table.mergeAction(table, tableInfo.nRow);
+                        break;
+                    case 'delete':
+                        table.deleteAction(table, tableInfo.nRow);
+                        break;
+                    default:
+                }
 
-                $(td).focus();
+                $(td).focus()
+            },
+            cancel: function () {
+                $(td).html(table.editingTd.data);
+                $(td).addClass('editable');
+
+                table.editingTd = null;
+
+                $(td).focus()
             }
         };
 
         let edit_html = `
             <div class="accordion" id="tokenizer" style="display:block;">
-                <section class="accordion-item tokenizer-action">&#8597;&nbsp;&nbsp;split</section>
-                <section class="accordion-item tokenizer-action">&#10227;&nbsp;merge</section>
-                <section class="accordion-item tokenizer-action">&#9735;&nbsp;sentence</section>
-                <section class="accordion-item tokenizer-action">&#9447;&nbsp;delete</section>
+                <section class="accordion-item tokenizer-action" id="split">&#8597;&nbsp;&nbsp;split</section>
+                <section class="accordion-item tokenizer-action" id="merge">&#10227;&nbsp;merge</section>
+                <section class="accordion-item tokenizer-action" id="sentence">&#9735;&nbsp;sentence</section>
+                <section class="accordion-item tokenizer-action" id="delete">&#9447;&nbsp;delete</section>
             </div>`;
 
         $(td).removeClass('editable');
         $(td).html(edit_html);
 
-        $('#tokenizer').mouseleave( function(event) { table.editingTd.finish(null, false); });
-
-        $('.tokenizer-action').click(function(event) { table.editingTd.finish($(event.target).text(), true); });
+        $('#tokenizer').mouseleave( function(event) { table.editingTd.cancel(); });
+        $('.tokenizer-action').click(function(event) { table.editingTd.performAction(event.target.id); });
     },
 
     makeTdEditable: function (td, content) {

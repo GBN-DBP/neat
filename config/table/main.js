@@ -601,9 +601,8 @@ let table = {
         let rows = $('tbody').children('tr');
         let pRow = 0;
 
-        $.each(table.rows, (nRow, el) => {
-            if (nRow < table.startIndex) return;
-            if (nRow >= table.endIndex) return;
+        for (let nRow = table.startIndex; nRow < table.endIndex; ++nRow) {
+            let el = table.rows[nRow];
 
             let row = $(rows[pRow]);
             let tableInfo = row.data('tableInfo');
@@ -636,7 +635,7 @@ let table = {
             });
 
             pRow++
-        });
+        }
 
         table.colorCodeNETag();
 

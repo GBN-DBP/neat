@@ -1,8 +1,3 @@
-let min_left = 1000000000
-let max_right = 0
-let min_top = 1000000000
-let max_bottom = 0
-
 function updatePreview(row, urls) {
     if (urls == null) return;
 
@@ -26,10 +21,10 @@ function updatePreview(row, urls) {
 
 
     top = Math.max(0, top - 25);
-    bottom = Math.min(max_bottom, bottom + 25);
+    bottom = Math.min(table.maxBottom, bottom + 25);
 
     left = Math.max(0, left - 50);
-    right = Math.min(max_right, right + 50);
+    right = Math.min(table.maxRight, right + 50);
 
     width = right - left;
     height = bottom - top;
@@ -67,10 +62,10 @@ function updatePreview(row, urls) {
     img.src = img_url;
 
     top = Math.max(0, top - 200);
-    bottom = Math.min(max_bottom, bottom + 200);
+    bottom = Math.min(table.maxBottom, bottom + 200);
 
     left = Math.max(0, left - 400);
-    right = Math.min(max_right, right + 400);
+    right = Math.min(table.maxRight, right + 400);
 
     width = right - left;
     height = bottom - top;
@@ -112,17 +107,17 @@ function updatePreview(row, urls) {
 
     full_img_url = urls[row['url_id']] + highlight;
 
-    width = max_right - min_left;
-    height = max_bottom - min_top;
+    width = table.maxRight - table.minLeft;
+    height = table.maxBottom - table.minTop;
 
     full_img_url = full_img_url.replace("left,top,width,height", "full")
     full_img_url = full_img_url.replace("left,right,top,bottom", "full")
     full_img_url = full_img_url.replace("left,top,right,bottom", "full")
 
-    full_img_url = full_img_url.replace(/left/g,  min_left.toString());
-    full_img_url = full_img_url.replace(/right/g, max_right.toString());
-    full_img_url = full_img_url.replace(/top/g,   min_top.toString());
-    full_img_url = full_img_url.replace(/bottom/g, max_bottom.toString());
+    full_img_url = full_img_url.replace(/left/g,  table.minLeft.toString());
+    full_img_url = full_img_url.replace(/right/g, table.maxRight.toString());
+    full_img_url = full_img_url.replace(/top/g,   table.minTop.toString());
+    full_img_url = full_img_url.replace(/bottom/g, table.maxBottom.toString());
     full_img_url = full_img_url.replace(/width/g, width.toString());
     full_img_url = full_img_url.replace(/height/g, height.toString());
 

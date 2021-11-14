@@ -58,6 +58,7 @@ class TableItem {
         this.element = document.createElement('td');
         this.element.className = isEditable ? "editable hover" : "hover";
         this.element.innerText = this.data;
+        this.element.tabIndex = "0";
 
         this.listener = new window.keypress.Listener(this.element, { prevent_repeat: true })
     }
@@ -238,7 +239,6 @@ let table = {
         
             // row.setFocus(() => {
             $(row.element).focusin(() => {
-                console.log('focusin');
                 updatePreview(row.data, table.urls);
 
                 $('#preview-rgn').css('transform', 'translate(0,' + ($(row.element).position().top + $(row.element).height()/2) + 'px)'
@@ -338,10 +338,6 @@ let table = {
             row.addItem('ID', idItem);
 
             Object.entries(row.items).forEach(([field, item]) => {
-                // item.setFocus(() => $(row.element).focus());
-                $(item.element).focus(() => {
-                    console.log('focus')
-                });
                 item.setOnMouseOver((event) => {
                     if (table.editingTd == null) {
                         $(event.target).focus()

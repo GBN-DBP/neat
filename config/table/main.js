@@ -1,94 +1,176 @@
-class Td {
-}
-
-class Row {
-    constructor (table, nRow, listener_defaults) {
-        this.table = table;
-        this.nRow = nRow;
-
-        this.data = $("<tr/>").data('tableInfo', { 'nRow': this.nRow });
-
-        this.data.focusin(() => {
-            updatePreview(this.table.data[this.data.data('tableInfo').nRow], this.table.urls);
-
-            $('#preview-rgn').css('transform', 'translate(0,' + (this.data.position().top + this.data.height()/2) + 'px)'
-                + ' translate(0%,-50%)')
-        });
-
-        this.data.append($('<td class="hover"/>').text(this.nRow).data('tableInfo', { 'nRow': this.nRow }));
-
-        this.setListener(listener_defaults)
-    }
-
-    setListener(defaults) {
-        this.listener = new window.keypress.Listener(this.data, defaults);
-
-        this.listener.register_many([{
-            keys: 's t',
-            on_keydown: () => this.table.sentenceAction(this.table, this.data.data('tableInfo').nRow),
-            is_sequence: true,
-            is_solitary: true,
-            is_exclusive: true
-        }, {
-            keys: 's p',
-            on_keydown: () => table.splitAction(this.table, this.data.data('tableInfo').nRow),
-            is_sequence: true,
-            is_solitary: true,
-            is_exclusive: true
-        }, {
-            keys: 'm e',
-            on_keydown: () => this.table.mergeAction(this.table, this.data.data('tableInfo').nRow),
-            is_sequence: true,
-            is_solitary: true,
-            is_exclusive: true
-        }, {
-            keys: 'd l',
-            on_keydown: () => this.table.deleteAction(this.table, this.data.data('tableInfo').nRow),
-            is_sequence: true,
-            is_solitary: true,
-            is_exclusive: true
-        }])
-    }
-
-    append(td) {
-        this.data.append(td)
-    }
-
-    getData() {
-        return this.data
-    }
-}
-
 class TableHead {
-    constructor (element, fields) {
-        this.element = element;
+    constructor (fields) {
         this.fields = fields;
 
-        this.fields.forEach((field) => {
-            let th = document.createElement('th');
-            th.id = field;
+        this.element = document.createElement('thead');
 
-            let d_flex = document.createElement('div');
-            d_flex.className = "d-flex align-items-center";
+        this.tr = document.createElement('tr');
+        this.element.append(this.tr);
 
-            let flex_grow = document.createElement('div');
-            flex_grow.className = "flex-grow-1";
-            flex_grow.innerText = field;
+        this.fields = []
+    }
 
-            d_flex.append(flex_grow);
-            th.append(d_flex);
-            $(this.element).append(th)
+    addField(field) {
+        this.fields.push(field);
+
+        let th = document.createElement('th');
+        th.style = "width: 15%";
+
+        let d_flex = document.createElement('div');
+        d_flex.className = "d-flex align-items-center";
+
+        let flex_grow = document.createElement('div');
+        flex_grow.className = "flex-grow-1";
+        flex_grow.innerText = field;
+
+        d_flex.append(flex_grow);
+        th.append(d_flex);
+        this.tr.append(th)
+    }
+
+    setPrevButton(callback) {
+        let btn = document.createElement('button');
+        btn.className = "btn btn-link float-left align-middle"
+        btn.tabIndex = "-1";
+        btn.innerText = "<<";
+
+        this.tr.firstChild.firstChild.prepend(btn);
+
+        btn.onclick = callback
+    }
+
+    setNextButton(callback) {
+        let btn = document.createElement('button');
+        btn.className = "btn btn-link float-right align-middle"
+        btn.tabIndex = "-1";
+        btn.innerText = ">>";
+
+        this.tr.lastChild.lastChild.append(btn);
+
+        btn.onclick = callback
+    }
+}
+
+class TableItem {
+    constructor (data, isEditable) {
+        this.data = data;
+
+        this.element = document.createElement('td');
+        this.element.className = isEditable ? "editable hover" : "hover";
+        this.element.innerText = this.data;
+
+        this.listener = new window.keypress.Listener(this.element, { prevent_repeat: true })
+    }
+
+    setText(text) {
+        this.element.innerText = text
+    }
+
+    setLink(url, text) {
+        let link = document.createElement('a');
+        link.innerText = text;
+        link.href = url;
+        link.onclick = (event) => event.stopPropagation();
+
+        this.element.append(link);
+        this.element.append(document.createElement('br'))
+    }
+
+    setOnMouseOver(callback) {
+        this.element.onmouseover = callback
+    }
+
+    setFocus(callback) {
+        $(this.element).focus(callback)
+    }
+
+    clear() {
+        this.element.innerHTML = ''
+    }
+
+    setClickAction(clickAction) {
+        this.clickAction = clickAction
+    }
+
+    setFillAction(fillAction) {
+        this.fillAction = fillAction
+    }
+
+    setSimpleCombo(keys, action) {
+        this.listener.simple_combo({
+            keys: keys,
+            on_keydown: action,
+            is_solitary: true,
+            is_exclusive: true
+        })
+    }
+
+    setSequenceCombo(keys, action) {
+        this.listener.sequence_combo({
+            keys: keys,
+            on_keydown: action,
+            is_sequence: true,
+            is_solitary: true,
+            is_exclusive: true
+        })
+    }
+}
+
+class TableRow {
+    constructor (data, nRow) {
+        this.data = data;
+        this.nRow = nRow;
+
+        this.element = document.createElement('tr');
+
+        this.items = [];
+
+        this.listener = new window.keypress.Listener(this.element, { prevent_repeat: true })
+    }
+
+    addItem(item) {
+        this.items.push(item);
+        this.element.append(item.element)
+    }
+
+    setFocus(callback) {
+        $(this.element).focus(callback)
+    }
+
+    setSequenceCombo(keys, action) {
+        this.listener.sequence_combo({
+            keys: keys,
+            on_keydown: action,
+            is_sequence: true,
+            is_solitary: true,
+            is_exclusive: true
         })
     }
 }
 
 class TableBody {
+    constructor () {
+        this.element = document.createElement('tbody');
+        this.element.id = "table-body";
+
+        this.rows = []
+    }
+
+    addRow(row) {
+        this.rows.push(row);
+        this.element.append(row.element)
+    }
 }
 
 let table = {
     displayRows: 15,
     startIndex: 0,
     endIndex: 15,
+
+    element: null,
+
+    head: null,
+    body: null,
 
     dataFields: new Set(['TOKEN', 'conf', 'TEXT', 'ocrconf', 'ID', 'NE-TAG', 'NE-EMB']),
     ctrlFields: new Set(['url_id', 'left', 'right', 'top', 'bottom']),
@@ -118,7 +200,6 @@ let table = {
     editingTd: null,
 
     init: function (data, urls, listener_defaults, notifyChange) {
-        console.log(data);
         table.data = data.data;
         table.fields = data.meta.fields;
         table.urls = urls;
@@ -127,138 +208,139 @@ let table = {
 
         table.sanitize();
 
-        let thead = new TableHead('#tablehead', ['No.', 'TOKEN', 'NE-TAG', 'NE-EMB', 'ID']);
+        table.element = document.createElement('table');
+        table.element.id = "table";
 
-        let editable_html =`<td class="editable hover">`;
+        let fields = ['No.', 'TOKEN', 'NE-TAG', 'NE-EMB', 'ID'];
+
+        table.head = new TableHead(fields);
+        table.element.append(table.head.element);
+
+        table.head.addField("LOCATION");
+        fields.forEach((field) => table.head.addField(field));
+
+        table.head.setPrevButton(() => table.stepsBackward(table.displayRows));
+        table.head.setNextButton(() => table.stepsForward(table.displayRows));
+
+        table.body = new TableBody();
+        table.element.append(table.body.element);
 
         for (let nRow = table.startIndex; nRow < table.endIndex; ++nRow) {
-            let el = table.data[nRow];
+            let row = new TableRow(table.data[nRow], nRow);
+        
+            row.setFocus(() => {
+                updatePreview(row.data, table.urls);
 
-            let row = new Row(table, nRow, table.listener_defaults);
-
-            $.each(el, (column, content) => {
-                let td = $(editable_html)
-
-                let listener = new window.keypress.Listener(td, table.listener_defaults);
-
-                if (table.hiddenFields.has(column)) return
-
-                let clickAction = function() { console.log('Do something different'); }
-
-                let fillAction = (function(column) {
-                    return function(td) {
-                        let tableInfo = $(td).data('tableInfo');
-
-                        let content = table.data[tableInfo.nRow][tableInfo.column];
-
-                        td.text(content);
-
-                        if ((table.textFields.has(column)) && (table.fields.some(x => table.confFields.has(x)))) {
-                            td.css('background-color', table.fields.find(x => table.confFields.has(x)));
-                        }
-
-                    }
-                })(column);
-
-                if (column == table.nmbrField) {
-                    clickAction = table.makeLineSplitMerge;
-                }
-                else if (table.editFields.has(column))  {
-                    clickAction = table.makeTdEditable;
-
-                    listener.simple_combo('enter', function() { $(td).click() });
-
-                    if (table.linkFields.has(column)) {
-                        fillAction = function(td) {
-                            let tableInfo = $(td).data('tableInfo');
-
-                            let content = table.data[tableInfo.nRow][column];
-
-                            if (String(content).match(/^Q[0-9]+.*/g) == null) {
-                                td.text(content);
-                            }
-                            else {
-                                td.html("");
-
-                                var reg = /.*?(Q[0-9]+).*?/g;
-                                var result;
-                                let count = 0;
-                                while((element = reg.exec(content)) !== null) {
-                                    if (count > 2) break
-
-                                    let link = $('<a href="https://www.wikidata.org/wiki/' + element[1] +
-                                        '" target="_blank" rel="noopener noreferrer">' +
-                                        element[1] + "</a>");
-
-                                    link.click(function(event) {
-                                        event.stopPropagation()
-                                    });
-
-                                    td.append(link);
-                                    td.append($("<br>"))
-                                    count++;
-                                }
-                            }
-                        };
-                    }
-                }
-                else if (table.tagFields.has(column)) {
-                    clickAction = table.makeTagEdit;
-
-                    function tagAction(tag) {
-                        tableInfo = $(td).data('tableInfo');
-
-                        table.data[tableInfo.nRow][tableInfo.column] = tag;
-
-                        td.html(tag);
-                        table.colorCodeNETag();
-                        table.notifyChange()
-                    };
-
-                    listener.sequence_combo('b p', function() { tagAction('B-PER'); });
-                    listener.sequence_combo('b l', function() { tagAction('B-LOC'); });
-                    listener.sequence_combo('b o', function() { tagAction('B-ORG'); });
-                    listener.sequence_combo('b w', function() { tagAction('B-WORK'); });
-                    listener.sequence_combo('b c', function() { tagAction('B-CONF'); });
-                    listener.sequence_combo('b e', function() { tagAction('B-EVT'); });
-                    listener.sequence_combo('b t', function() { tagAction('B-TODO'); });
-
-                    listener.sequence_combo('i p', function() { tagAction('I-PER'); });
-                    listener.sequence_combo('i l', function() { tagAction('I-LOC'); });
-                    listener.sequence_combo('i o', function() { tagAction('I-ORG'); });
-                    listener.sequence_combo('i w', function() { tagAction('I-WORK'); });
-                    listener.sequence_combo('i c', function() { tagAction('I-CONF'); });
-                    listener.sequence_combo('i e', function() { tagAction('I-EVT'); });
-                    listener.sequence_combo('i t', function() { tagAction('I-TODO'); });
-
-                    listener.sequence_combo('backspace', function() { tagAction('O'); });
-                }
-
-                td.attr('tabindex', 0).data('tableInfo', {
-                    'nRow': nRow,
-                    'column': column ,
-                    'clickAction': clickAction,
-                    'fillAction': fillAction
-                });
-
-                fillAction(td);
-
-                row.append(td)
+                $('#preview-rgn').css('transform', 'translate(0,' + ($(row.element).position().top + $(row.element).height()/2) + 'px)'
+                    + ' translate(0%,-50%)')
             });
 
-            $("#table tbody").append(row.getData());
+            row.setSequenceCombo('s t', table.sentenceAction);
+            row.setSequenceCombo('s p', table.splitAction);
+            row.setSequenceCombo('m e', table.mergeAction);
+            row.setSequenceCombo('d l', table.deleteAction);
+
+            let locItem = new TableItem(nRow.toString(), false);
+            locItem.setClickAction(() => console.log("Do something different"));
+            locItem.setFillAction(() => locItem.setText(locItem.data));
+            row.addItem(locItem);
+
+            let noItem = new TableItem(table.data[nRow]['No.'], true);
+            noItem.setClickAction(table.makeLineSplitMerge);
+            noItem.setFillAction(() => noItem.setText(noItem.data));
+            row.addItem(noItem);
+
+            // TODO: Set background color depending on confidence value (if available)
+            let tokenItem = new TableItem(table.data[nRow]['TOKEN'], true);
+            tokenItem.setClickAction(table.makeTdEditable);
+            tokenItem.setFillAction(() => tokenItem.setText(tokenItem.data));
+            tokenItem.setSimpleCombo('enter', tokenItem.clickAction);
+            row.addItem(tokenItem);
+
+            let tagAction = (tag, field, item) => {
+                table.data[nRow][field] = tag;
+                item.setText(tag);
+                table.colorCodeNETag();
+                table.notifyChange()
+            }
+
+            let tagItem = new TableItem(table.data[nRow]['NE-TAG'], true);
+            tagItem.setClickAction(table.makeTagEdit);
+            tagItem.setFillAction(() => tagItem.setText(tagItem.data));
+            tagItem.setSequenceCombo('b p', () => tagAction('B-PER', 'NE-TAG', tagItem));
+            tagItem.setSequenceCombo('b l', () => tagAction('B-LOC', 'NE-TAG', tagItem));
+            tagItem.setSequenceCombo('b o', () => tagAction('B-ORG', 'NE-TAG', tagItem));
+            tagItem.setSequenceCombo('b w', () => tagAction('B-WORK', 'NE-TAG', tagItem));
+            tagItem.setSequenceCombo('b c', () => tagAction('B-CONF', 'NE-TAG', tagItem));
+            tagItem.setSequenceCombo('b e', () => tagAction('B-EVT', 'NE-TAG', tagItem));
+            tagItem.setSequenceCombo('b t', () => tagAction('B-TODO', 'NE-TAG', tagItem));
+            tagItem.setSequenceCombo('i p', () => tagAction('I-PER', 'NE-TAG', tagItem));
+            tagItem.setSequenceCombo('i l', () => tagAction('I-LOC', 'NE-TAG', tagItem));
+            tagItem.setSequenceCombo('i o', () => tagAction('I-ORG', 'NE-TAG', tagItem));
+            tagItem.setSequenceCombo('i w', () => tagAction('I-WORK', 'NE-TAG', tagItem));
+            tagItem.setSequenceCombo('i c', () => tagAction('I-CONF', 'NE-TAG', tagItem));
+            tagItem.setSequenceCombo('i e', () => tagAction('I-EVT', 'NE-TAG', tagItem));
+            tagItem.setSequenceCombo('i t', () => tagAction('I-TODO', 'NE-TAG', tagItem));
+            tagItem.setSimpleCombo('backspace', () => tagAction('O', 'NE-TAG', tagItem));
+            row.addItem(tagItem);
+
+            tagItem = new TableItem(table.data[nRow]['NE-EMB'], true);
+            tagItem.setClickAction(table.makeTagEdit);
+            tagItem.setFillAction(() => tagItem.setText(tagItem.data));
+            tagItem.setSequenceCombo('b p', () => tagAction('B-PER', 'NE-EMB', tagItem));
+            tagItem.setSequenceCombo('b l', () => tagAction('B-LOC', 'NE-EMB', tagItem));
+            tagItem.setSequenceCombo('b o', () => tagAction('B-ORG', 'NE-EMB', tagItem));
+            tagItem.setSequenceCombo('b w', () => tagAction('B-WORK', 'NE-EMB', tagItem));
+            tagItem.setSequenceCombo('b c', () => tagAction('B-CONF', 'NE-EMB', tagItem));
+            tagItem.setSequenceCombo('b e', () => tagAction('B-EVT', 'NE-EMB', tagItem));
+            tagItem.setSequenceCombo('b t', () => tagAction('B-TODO', 'NE-EMB', tagItem));
+            tagItem.setSequenceCombo('i p', () => tagAction('I-PER', 'NE-EMB', tagItem));
+            tagItem.setSequenceCombo('i l', () => tagAction('I-LOC', 'NE-EMB', tagItem));
+            tagItem.setSequenceCombo('i o', () => tagAction('I-ORG', 'NE-EMB', tagItem));
+            tagItem.setSequenceCombo('i w', () => tagAction('I-WORK', 'NE-EMB', tagItem));
+            tagItem.setSequenceCombo('i c', () => tagAction('I-CONF', 'NE-EMB', tagItem));
+            tagItem.setSequenceCombo('i e', () => tagAction('I-EVT', 'NE-EMB', tagItem));
+            tagItem.setSequenceCombo('i t', () => tagAction('I-TODO', 'NE-EMB', tagItem));
+            tagItem.setSimpleCombo('backspace', () => tagAction('O', 'NE-EMB', tagItem));
+            row.addItem(tagItem);
+
+            let idItem = new TableItem(table.data[nRow]['ID'], true);
+            idItem.setClickAction(table.makeTdEditable);
+            idItem.setFillAction(() => {
+                if (String(idItem.data).match(/^Q[0-9]+.*/g) == null) {
+                    idItem.setText(idItem.data)
+                }
+                else {
+                    idItem.clear();
+
+                    let regex = /.*?(Q[0-9]+).*?/g;
+                    for (let i = 0; i <= 2; ++i) {
+                        match = regex.exec(idItem.data);
+                        if (match === null) {
+                            break
+                        }
+
+                        idItem.setLink("https://www.wikidata.org/wiki/" + match[1], match[1])
+                    }
+                }
+            });
+            idItem.setSimpleCombo('enter', idItem.clickAction);
+            row.addItem(idItem);
+
+            row.items.forEach((item) => {
+                item.setFocus(() => $(row.element).focus());
+                item.setOnMouseOver(() => {
+                    if (table.editingTd == null) {
+                        $(item.element).focus()
+                    }
+                });
+                item.fillAction()
+            });
+
+            table.body.addRow(row)
         }
 
         table.colorCodeNETag();
-
-        $(".hover").on('mouseover',
-            function (evt) {
-
-                if (table.editingTd != null) return;
-
-                $(evt.target).focus()
-            }
-        );
 
         if ($("#docpos").val() != table.startIndex) {
             $("#docpos").val(table.data.length - table.startIndex)
@@ -327,7 +409,7 @@ let table = {
         table.update()
     },
 
-    sentenceAction: function (table, nRow) {
+    sentenceAction: function (nRow) {
         if (table.editingTd != null) return true;
 
         let new_line = JSON.parse(JSON.stringify(table.data[nRow]));
@@ -347,7 +429,7 @@ let table = {
         table.update()
     },
 
-    mergeAction: function (table, nRow) {
+    mergeAction: function (nRow) {
         if (table.editingTd != null) return;
 
         if (nRow < 1) return;
@@ -363,7 +445,7 @@ let table = {
         table.update()
     },
 
-    splitAction: function (table, nRow) {
+    splitAction: function (nRow) {
         if (table.editingTd != null) return;
 
         table.data.splice(nRow, 0, JSON.parse(JSON.stringify(table.data[nRow])));
@@ -373,7 +455,7 @@ let table = {
         table.update()
     },
 
-    deleteAction: function (table, nRow) {
+    deleteAction: function (nRow) {
         if (table.editingTd != null) return;
 
         table.data.splice(nRow, 1);

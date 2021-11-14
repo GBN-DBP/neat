@@ -222,26 +222,8 @@ function setupInterface(data, file, urls) {
 
         $('#docpos').slider();
 
-        let table_html =
-            `
-            <table id="table">
-                <thead>
-                <tr id="tablehead">
-                    <th style="width: 15%">
-                        <div class="d-flex align-items-center" id="location">LOCATION</div>
-                    </th>
-                </tr>
-                </thead>
-                <tbody id="table-body"></tbody>
-            </table>
-            <br/>
-            <br/>
-            `;
-
         let save_html =
             `<button class="btn btn-primary saveButton" id="save" disabled tabindex="-1">Save Changes</button>`;
-
-        $("#tableregion").html(table_html);
 
         $("#btn-region").html(save_html);
 
@@ -283,22 +265,12 @@ function setupInterface(data, file, urls) {
             });
 
 
-        table.init(data, urls, listener_defaults, notifyChange);
+        table.init(data, urls, listener_defaults, notifyChange)
 
-        let prev_button_html=`
-            <button class="btn btn-link float-left algin-middle" id="back" tabindex="-1"><<</button>
-        `;
+        table.element.append(document.createElement('br'));
+        table.element.append(document.createElement('br'));
 
-        let next_button_html= `
-            <button class="btn btn-link float-right align-middle" id="next" tabindex="-1">>></button>
-        `;
-
-        $("#location").prepend(prev_button_html);
-        $("#tablehead").children().last().children().last().append(next_button_html);
-
-        $('#back').on('click', function() { table.stepsBackward(table.displayRows); } );
-        $('#next').on('click', function() { table.stepsForward(table.displayRows); } );
-
+        $("#tableregion").html(table.element);
     }
 
     $('#tableregion')[0].addEventListener("wheel",

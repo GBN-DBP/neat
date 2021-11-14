@@ -62,6 +62,10 @@ class TableItem {
         this.listener = new window.keypress.Listener(this.element, { prevent_repeat: true })
     }
 
+    setData(data) {
+        this.data = data
+    }
+
     setText(text) {
         this.element.innerText = text
     }
@@ -123,14 +127,18 @@ class TableRow {
 
         this.element = document.createElement('tr');
 
-        this.items = [];
+        this.items = {};
 
         this.listener = new window.keypress.Listener(this.element, { prevent_repeat: true })
     }
 
-    addItem(item) {
-        this.items.push(item);
+    addItem(field, item) {
+        this.items[field] = item;
         this.element.append(item.element)
+    }
+
+    setData(data) {
+        this.data = data
     }
 
     setFocus(callback) {
@@ -228,7 +236,9 @@ let table = {
         for (let nRow = table.startIndex; nRow < table.endIndex; ++nRow) {
             let row = new TableRow(table.data[nRow], nRow);
         
-            row.setFocus(() => {
+            // row.setFocus(() => {
+            $(row.element).focusin(() => {
+                console.log('focusin');
                 updatePreview(row.data, table.urls);
 
                 $('#preview-rgn').css('transform', 'translate(0,' + ($(row.element).position().top + $(row.element).height()/2) + 'px)'
@@ -243,19 +253,19 @@ let table = {
             let locItem = new TableItem(nRow.toString(), false);
             locItem.setClickAction(() => console.log("Do something different"));
             locItem.setFillAction(() => locItem.setText(locItem.data));
-            row.addItem(locItem);
+            row.addItem('LOCATION', locItem);
 
-            let noItem = new TableItem(table.data[nRow]['No.'], true);
+            let noItem = new TableItem(row.data['No.'], true);
             noItem.setClickAction(table.makeLineSplitMerge);
             noItem.setFillAction(() => noItem.setText(noItem.data));
-            row.addItem(noItem);
+            row.addItem('No.', noItem);
 
             // TODO: Set background color depending on confidence value (if available)
-            let tokenItem = new TableItem(table.data[nRow]['TOKEN'], true);
+            let tokenItem = new TableItem(row.data['TOKEN'], true);
             tokenItem.setClickAction(table.makeTdEditable);
             tokenItem.setFillAction(() => tokenItem.setText(tokenItem.data));
             tokenItem.setSimpleCombo('enter', tokenItem.clickAction);
-            row.addItem(tokenItem);
+            row.addItem('TOKEN', tokenItem);
 
             let tagAction = (tag, field, item) => {
                 table.data[nRow][field] = tag;
@@ -264,7 +274,7 @@ let table = {
                 table.notifyChange()
             }
 
-            let tagItem = new TableItem(table.data[nRow]['NE-TAG'], true);
+            let tagItem = new TableItem(row.data['NE-TAG'], true);
             tagItem.setClickAction(table.makeTagEdit);
             tagItem.setFillAction(() => tagItem.setText(tagItem.data));
             tagItem.setSequenceCombo('b p', () => tagAction('B-PER', 'NE-TAG', tagItem));
@@ -282,9 +292,9 @@ let table = {
             tagItem.setSequenceCombo('i e', () => tagAction('I-EVT', 'NE-TAG', tagItem));
             tagItem.setSequenceCombo('i t', () => tagAction('I-TODO', 'NE-TAG', tagItem));
             tagItem.setSimpleCombo('backspace', () => tagAction('O', 'NE-TAG', tagItem));
-            row.addItem(tagItem);
+            row.addItem('NE-TAG', tagItem);
 
-            tagItem = new TableItem(table.data[nRow]['NE-EMB'], true);
+            tagItem = new TableItem(row.data['NE-EMB'], true);
             tagItem.setClickAction(table.makeTagEdit);
             tagItem.setFillAction(() => tagItem.setText(tagItem.data));
             tagItem.setSequenceCombo('b p', () => tagAction('B-PER', 'NE-EMB', tagItem));
@@ -302,9 +312,9 @@ let table = {
             tagItem.setSequenceCombo('i e', () => tagAction('I-EVT', 'NE-EMB', tagItem));
             tagItem.setSequenceCombo('i t', () => tagAction('I-TODO', 'NE-EMB', tagItem));
             tagItem.setSimpleCombo('backspace', () => tagAction('O', 'NE-EMB', tagItem));
-            row.addItem(tagItem);
+            row.addItem('NE-EMB', tagItem);
 
-            let idItem = new TableItem(table.data[nRow]['ID'], true);
+            let idItem = new TableItem(row.data['ID'], true);
             idItem.setClickAction(table.makeTdEditable);
             idItem.setFillAction(() => {
                 if (String(idItem.data).match(/^Q[0-9]+.*/g) == null) {
@@ -325,13 +335,16 @@ let table = {
                 }
             });
             idItem.setSimpleCombo('enter', idItem.clickAction);
-            row.addItem(idItem);
+            row.addItem('ID', idItem);
 
-            row.items.forEach((item) => {
-                item.setFocus(() => $(row.element).focus());
-                item.setOnMouseOver(() => {
+            Object.entries(row.items).forEach(([field, item]) => {
+                // item.setFocus(() => $(row.element).focus());
+                $(item.element).focus(() => {
+                    console.log('focus')
+                });
+                item.setOnMouseOver((event) => {
                     if (table.editingTd == null) {
-                        $(item.element).focus()
+                        $(event.target).focus()
                     }
                 });
                 item.fillAction()
@@ -345,6 +358,8 @@ let table = {
         if ($("#docpos").val() != table.startIndex) {
             $("#docpos").val(table.data.length - table.startIndex)
         }
+
+        console.log('done');
     },
 
     getDataFields: function () {
@@ -723,40 +738,21 @@ let table = {
     update: function () {
         table.editingTd = null;
 
-        let rows = $('tbody').children('tr');
         let pRow = 0;
 
         for (let nRow = table.startIndex; nRow < table.endIndex; ++nRow) {
-            let el = table.data[nRow];
+            let row = table.body.rows[pRow];
+            row.setData(table.data[nRow]);
 
-            let row = $(rows[pRow]);
-            let tableInfo = row.data('tableInfo');
-
-            tableInfo.nRow = nRow;
-
-            row.data('tableInfo', tableInfo);
-
-            let loc = $(row.children('td').first());
-            loc.data('tableInfo', tableInfo);
-            loc.text(nRow);
-
-            let columns = $(rows[pRow]).children('.editable');
-            let pColumn = 0;
-
-            $.each(el, (column_name, content) => {
-                if (table.hiddenFields.has(column_name)) return;
-
-                let td = $(columns[pColumn]);
-
-                tableInfo = td.data('tableInfo');
-
-                tableInfo.nRow = nRow;
-
-                td.data('tableInfo', tableInfo);
-
-                tableInfo.fillAction(td);
-
-                pColumn++
+            Object.entries(row.items).forEach(([field, item]) => {
+                if (field == 'LOCATION') {
+                    item.setText(nRow.toString())
+                }
+                else {
+                    item.setData(row.data[field]);
+                    item.setText(row.data[field])
+                }
+                item.fillAction()
             });
 
             pRow++

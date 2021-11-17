@@ -208,8 +208,8 @@ function setupInterface(data, file, urls) {
         $("#docpos").change(
             function(evt) {
 
-                if (table.editingTd != null) {
-                    table.editingTd.finish(true);
+                if (table.beingEdited) {
+                    table.beingEdited.finish(true);
                 }
 
                 if (table.startIndex == data.data.length - this.value) return;
@@ -244,7 +244,7 @@ function setupInterface(data, file, urls) {
 
                 if (target == null) return;
 
-                if (table.editingTd) {
+                if (table.beingEdited) {
 
                     if (target == $(':focus')) return;
                     if ($.contains($(':focus')[0], target)) return;
@@ -253,7 +253,7 @@ function setupInterface(data, file, urls) {
 
                     let refocus = $(':focus');
 
-                    table.editingTd.finish(true);
+                    table.beingEdited.finish(true);
 
                     refocus.focus();
 
@@ -276,7 +276,7 @@ function setupInterface(data, file, urls) {
     $('#tableregion')[0].addEventListener("wheel",
         function(event) {
 
-            if (table.editingTd != null) return true;
+            if (table.beingEdited) return;
 
             if (event.deltaY < 0) table.stepsBackward(1);
             else table.stepsForward(1);
@@ -284,28 +284,28 @@ function setupInterface(data, file, urls) {
 
     wnd_listener.simple_combo('tab',
         function () {
-            if (table.editingTd != null)
+            if (table.beingEdited)
                 return false; // If we are in editing mode, we do not want to propagate the TAB event.
             else return true; // In non-editing mode, we want to get the "normal" tab behaviour.
         });
 
     wnd_listener.simple_combo('pageup',
         function() {
-            if (table.editingTd != null) return true;
+            if (table.beingEdited) return;
 
             $('#back').click();
         });
 
     wnd_listener.simple_combo('pagedown',
         function() {
-            if (table.editingTd != null) return true;
+            if (table.beingEdited) return;
 
             $('#next').click();
         });
 
     wnd_listener.simple_combo('left',
         function() {
-            if (table.editingTd != null) return true;
+            if (table.beingEdited) return;
 
             let prev = $(':focus').prev('.editable')
 
@@ -318,7 +318,7 @@ function setupInterface(data, file, urls) {
         });
     wnd_listener.simple_combo('right',
         function() {
-            if (table.editingTd != null) return true;
+            if (table.beingEdited) return;
 
             let next = $(':focus').next('.editable')
 
@@ -335,7 +335,7 @@ function setupInterface(data, file, urls) {
             keys: 'meta up',
             on_keydown:
                 function() {
-                    if (table.editingTd != null) return true;
+                    if (table.beingEdited) return;
 
                     table.stepsBackward(1);
                 },
@@ -349,7 +349,7 @@ function setupInterface(data, file, urls) {
 
             on_keydown:
                 function() {
-                    if (table.editingTd != null) return true;
+                    if (table.beingEdited) return;
 
                     let prev = $(':focus').closest('tr').prev('tr')
 
@@ -370,7 +370,7 @@ function setupInterface(data, file, urls) {
             keys: 'meta down',
 
             on_keydown: function() {
-                if (table.editingTd != null) return true;
+                if (table.beingEdited) return;
 
                 table.stepsForward(1);
             },
@@ -383,7 +383,7 @@ function setupInterface(data, file, urls) {
         keys : 'down',
         on_keydown:
             function() {
-                if (table.editingTd != null) return true;
+                if (table.beingEdited) return;
 
                 let next = $(':focus').closest('tr').next('tr')
 
@@ -403,8 +403,7 @@ function setupInterface(data, file, urls) {
 
     wnd_listener.sequence_combo('l a',
         function() {
-
-            if (table.editingTd != null) return true;
+            if (table.beingEdited) return;
 
             table.displayRows++;
 
@@ -423,8 +422,7 @@ function setupInterface(data, file, urls) {
 
     wnd_listener.sequence_combo('l r',
         function() {
-
-            if (table.editingTd != null) return true;
+            if (table.beingEdited) return;
 
             if (table.displayRows > 5) table.displayRows--;
 

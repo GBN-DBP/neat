@@ -52,33 +52,46 @@ class TableHead {
 }
 
 class TableItem {
-    constructor (data, isEditable) {
+    constructor (data, field, parentRow, isEditable) {
         this.data = data;
+        this.field = field;
+        this.parentRow = parentRow;
+        this.isEditable = isEditable;
 
         this.element = document.createElement('td');
-        this.element.className = isEditable ? "editable hover" : "hover";
+        this.element.className = this.isEditable ? "editable hover" : "hover";
         this.element.innerText = this.data;
         this.element.tabIndex = "0";
 
         this.listener = new window.keypress.Listener(this.element, { prevent_repeat: true })
     }
 
+    toggleEditable() {
+        this.isEditable = !this.isEditable
+    }
+
     setData(data) {
         this.data = data
+    }
+
+    setFill(method) {
+        this.fill = method
     }
 
     setText(text) {
         this.element.innerText = text
     }
 
-    setLink(url, text) {
-        let link = document.createElement('a');
-        link.innerText = text;
-        link.href = url;
-        link.onclick = (event) => event.stopPropagation();
+    setHTML(html) {
+        this.element.innerHTML = html
+    }
 
-        this.element.append(link);
-        this.element.append(document.createElement('br'))
+    setClass(className) {
+        this.element.className = className
+    }
+
+    setOnClick(callback) {
+        this.element.onclick = callback
     }
 
     setOnMouseOver(callback) {
@@ -122,15 +135,21 @@ class TableItem {
 }
 
 class TableRow {
-    constructor (data, nRow) {
+    constructor (data, nRow, prevRow) {
         this.data = data;
         this.nRow = nRow;
+        this.prevRow = prevRow;
+        this.nextRow = null;
 
         this.element = document.createElement('tr');
 
         this.items = {};
 
         this.listener = new window.keypress.Listener(this.element, { prevent_repeat: true })
+    }
+
+    setNextRow(nextRow) {
+        this.nextRow = nextRow;
     }
 
     addItem(field, item) {
@@ -176,23 +195,8 @@ let table = {
     startIndex: 0,
     endIndex: 15,
 
-    element: null,
-
     head: null,
     body: null,
-
-    dataFields: new Set(['TOKEN', 'conf', 'TEXT', 'ocrconf', 'ID', 'NE-TAG', 'NE-EMB']),
-    ctrlFields: new Set(['url_id', 'left', 'right', 'top', 'bottom']),
-    nmbrField: 'No.',
-
-    hiddenFields: new Set(['url_id', 'left', 'right', 'top', 'bottom', 'ocrconf', 'conf']),
-    editFields: new Set(['TOKEN', 'TEXT', 'ID']),
-    textFields: new Set(['TOKEN', 'TEXT']),
-    linkFields: new Set(['ID']),
-    tagFields: new Set(['NE-TAG', 'NE-EMB']),
-    confFields: new Set(['ocrconf', 'conf']),
-
-    tagClasses: 'ner_per ner_loc ner_org ner_work ner_conf ner_evt ner_todo',
 
     minLeft: 1000000000,
     maxRight: 0,
@@ -200,17 +204,17 @@ let table = {
     maxBottom: 0,
 
     data: null,
-    fields: null,
+
+    element: null,
 
     urls: null,
     listener_defaults: null,
     notifyChange: null,
 
-    editingTd: null,
+    beingEdited: false,
 
     init: function (data, urls, listener_defaults, notifyChange) {
         table.data = data.data;
-        table.fields = data.meta.fields;
         table.urls = urls;
         table.listener_defaults = listener_defaults;
         table.notifyChange = notifyChange;
@@ -228,14 +232,20 @@ let table = {
         table.head.addField("LOCATION");
         fields.forEach((field) => table.head.addField(field));
 
-        table.head.setPrevButton(() => table.stepsBackward(table.displayRows));
-        table.head.setNextButton(() => table.stepsForward(table.displayRows));
+        table.head.setPrevButton(function () { table.stepsBackward(table.displayRows) });
+        table.head.setNextButton(function () { table.stepsForward(table.displayRows) });
 
         table.body = new TableBody();
         table.element.append(table.body.element);
 
+        let prevRow = null;
+
         for (let nRow = table.startIndex; nRow < table.endIndex; ++nRow) {
-            let row = new TableRow(table.data[nRow], nRow);
+            let row = new TableRow(table.data[nRow], nRow, prevRow);
+
+            if (prevRow != null) {
+                prevRow.setNextRow(row);
+            }
         
             // row.setFocus(() => {
             $(row.element).focusin(() => {
@@ -245,153 +255,473 @@ let table = {
                     + ' translate(0%,-50%)')
             });
 
-            row.setSequenceCombo('s t', table.sentenceAction);
-            row.setSequenceCombo('s p', table.splitAction);
-            row.setSequenceCombo('m e', table.mergeAction);
-            row.setSequenceCombo('d l', table.deleteAction);
+            let rowSentenceAction = function () {
+                if (table.beingEdited) return;
 
-            let locItem = new TableItem(nRow.toString(), false);
-            locItem.setClickAction(() => console.log("Do something different"));
-            locItem.setFillAction(() => locItem.setText(locItem.data));
-            row.addItem('LOCATION', locItem);
+                let new_line = JSON.parse(JSON.stringify(this.data));
 
-            let noItem = new TableItem(row.data['No.'], true);
-            noItem.setClickAction(table.makeLineSplitMerge);
-            noItem.setFillAction(() => noItem.setText(noItem.data));
-            row.addItem('No.', noItem);
+                new_line['TOKEN'] = "";
+                new_line['NE-TAG'] = 'O';
+                new_line['NE-EMB'] = 'O';
+                new_line['ID'] = "";
+
+                table.data.splice(this.nRow, 0, new_line);
+
+                table.sanitize();
+                table.notifyChange();
+                table.update()
+            };
+
+            let rowSplitAction = function () {
+                if (table.beingEdited) return;
+
+                table.data.splice(nRow, 0, JSON.parse(JSON.stringify(this.data)));
+
+                table.sanitize();
+                table.notifyChange();
+                table.update()
+            };
+
+            let rowMergeAction = function () {
+                if (table.beingEdited) return;
+                if (this.prevRow == null) return;
+
+                this.prevRow.data['TOKEN'] = this.prevRow.data['TOKEN'].toString() + this.data['TOKEN'].toString();
+
+                table.data.splice(this.nRow, 1);
+
+                table.sanitize();
+                table.notifyChange();
+                table.update()
+            };
+
+            let rowDeleteAction = function () {
+                if (table.beingEdited) return;
+
+                table.data.splice(this.nRow, 1);
+
+                table.sanitize();
+                table.notifyChange();
+                table.update()
+            };
+
+            let rowActions = {
+                'sentence': rowSentenceAction,
+                'split': rowSplitAction,
+                'merge': rowMergeAction,
+                'delete': rowDeleteAction
+            };
+
+            let rowActionTexts = {
+                'sentence': '&#9735;&nbsp;sentence',
+                'split': '&#8597;&nbsp;&nbsp;split',
+                'merge': '&#10227;&nbsp;merge',
+                'delete': '&#9447;&nbsp;delete'
+            };
+
+            let rowCombos = {
+                's t': rowSentenceAction,
+                's p': rowSplitAction,
+                'm e': rowMergeAction,
+                'd l': rowDeleteAction
+            };
+
+            Object.entries(rowCombos).forEach(([combo, action]) => {
+                row.setSequenceCombo(combo, action.bind(row))
+            });
+
+            let locItemField = 'LOCATION';
+            let locItemData = nRow.toString();
+            let locItemFill = function () {
+                this.clear();
+                this.setText(this.data)
+            };
+
+            let locItem = new TableItem(locItemData, locItemField, row, false);
+
+            locItem.setFill(locItemFill.bind(locItem));
+            row.addItem(locItemField, locItem);
+
+            let noItemField = 'No.';
+            let noItemData = row.data[noItemField];
+            let noItemOnClick = function () {
+                if (table.beingEdited) return;
+
+                this.clear();
+                this.setClass("hover");
+
+                let performAction = function (action) {
+                    this.setText(this.data);
+                    this.setClass("editable hover");
+
+                    rowActions[action].bind(this.parentRow)();
+
+                    $(this.element).focus()
+                };
+
+                let cancel = function () {
+                    this.setText(this.data);
+                    this.setClass("editable hover");
+
+                    $(this.element).focus()
+                };
+
+                let tokenizer = document.createElement('div');
+                tokenizer.className = "accordion";
+                tokenizer.id = "tokenizer";
+                tokenizer.style = "display:block;";
+
+                Object.entries(rowActionTexts).forEach(([id, text]) => {
+                    let section = document.createElement('section');
+                    section.className = "accordion-item tokenizer-action";
+                    section.id = id;
+                    section.innerText = encodeURI(text);
+
+                    tokenizer.append(section)
+                });
+                this.element.append(tokenizer);
+
+                $('#tokenizer').mouseleave(cancel.bind(this));
+                $('.tokenizer-action').click((evt) => {
+                    evt.stopPropagation();
+                    performAction.bind(this)(evt.target.id)
+                })
+            };
+            let noItemFill = function () {
+                this.clear();
+                this.setText(this.data)
+            };
+
+            let noItem = new TableItem(noItemData, noItemField, row, true);
+
+            noItem.setOnClick(noItemOnClick.bind(noItem));
+            noItem.setFill(noItemFill.bind(noItem));
+            row.addItem(noItemField, noItem);
+
+            let tokenItemField = 'TOKEN';
+            let tokenItemData = row.data[tokenItemField];
+            let tokenItemOnClick = function () {
+                if (table.beingEdited) return;
+
+                table.beingEdited = true;
+
+                this.clear();
+                this.setClass("editable hover");
+                
+                let confirm = function (keyboard, listener, textArea) {
+                    this.setClass("editable hover");
+                    keyboard.listener.reset();
+                    listener.reset();
+
+                    this.setData(textArea.value);
+                    table.data[this.parentRow.nRow][this.field] = this.data;
+
+                    table.sanitize();
+                    table.notifyChange();
+                    table.update();
+
+                    table.beingEdited = false;
+
+                    // this.keyboard.clear();
+                    $('.simple-keyboard').html("");
+
+                    $(this.element).focus()
+                };
+
+                let cancel = function (keyboard, listener) {
+                    this.setClass("editable hover");
+                    keyboard.listener.reset();
+                    listener.reset();
+
+                    table.sanitize();
+                    table.notifyChange();
+                    table.update();
+
+                    table.beingEdited = false;
+
+                    // this.keyboard.clear();
+                    $('.simple-keyboard').html("");
+
+                    $(this.element).focus()
+                };
+
+                let textArea = document.createElement('textarea');
+                textArea.style.width = this.element.clientWidth + 'px';
+                textArea.style.height = this.element.clientHeight + 'px';
+                textArea.className = "input";
+
+                textArea.value = this.data;
+                this.element.append(textArea);
+                $(textArea).focus();
+
+                let buttons = document.createElement('div');
+
+                let ok_btn = document.createElement('button');
+                ok_btn.className = "btn btn-secondary btn-sm";
+                ok_btn.innerText = "OK";
+                buttons.append(ok_btn);
+                buttons.append(" ");
+
+                let cancel_btn = document.createElement('button');
+                cancel_btn.className = "btn btn-secondary btn-sm";
+                cancel_btn.innerText = "CANCEL";
+                buttons.append(cancel_btn);
+
+                this.element.append(buttons);
+
+                let keyboard = new Keyboard(textArea, table.listener_defaults);
+
+                let listener = new window.keypress.Listener(textArea, table.listener_defaults);
+
+                listener.simple_combo('enter', () => confirm.bind(this)(keyboard, listener, textArea));
+                listener.simple_combo('esc', () => cancel.bind(this)(keyboard, listener));
+                listener.simple_combo('ctrl', keyboard.toggleLayout.bind(keyboard));
+
+                ok_btn.onclick = (evt) => {
+                    evt.stopPropagation();
+                    confirm.bind(this)(keyboard, listener, textArea)
+                };
+                cancel_btn.onclick = (evt) => {
+                    evt.stopPropagation();
+                    cancel.bind(this)(keyboard, listener)
+                };
+            };
+            let tokenItemFill = function () {
+                this.clear();
+                this.setText(this.data)
+            };
 
             // TODO: Set background color depending on confidence value (if available)
-            let tokenItem = new TableItem(row.data['TOKEN'], true);
-            tokenItem.setClickAction(table.makeTdEditable);
-            tokenItem.setFillAction(() => tokenItem.setText(tokenItem.data));
-            tokenItem.setSimpleCombo('enter', tokenItem.clickAction);
-            row.addItem('TOKEN', tokenItem);
+            let tokenItem = new TableItem(tokenItemData, tokenItemField, row, true);
 
-            let tagAction = (tag, field, item) => {
-                table.data[nRow][field] = tag;
-                item.setText(tag);
-                table.colorCodeNETag();
+            tokenItem.setOnClick(tokenItemOnClick.bind(tokenItem));
+            tokenItem.setFill(tokenItemFill.bind(tokenItem));
+            tokenItem.setSimpleCombo('enter', tokenItemOnClick.bind(tokenItem));
+            row.addItem(tokenItemField, tokenItem);
+
+            let bTagClasses = {
+                'B-PER': 'ner_per',
+                'B-LOC': 'ner_loc',
+                'B-ORG': 'ner_org',
+                'B-WORK': 'ner_work',
+                'B-CONF': 'ner_conf',
+                'B-EVT': 'ner_evt',
+                'B-TODO': 'ner_todo'
+            };
+
+            let iTagClasses = {
+                'I-PER': 'ner_per',
+                'I-LOC': 'ner_loc',
+                'I-ORG': 'ner_org',
+                'I-WORK': 'ner_work',
+                'I-CONF': 'ner_conf',
+                'I-EVT': 'ner_evt',
+                'I-TODO': 'ner_todo'
+            };
+
+            let tagCombos = {
+                'B-PER': 'b p',
+                'I-PER': 'i p',
+                'B-LOC': 'b l',
+                'I-LOC': 'i l',
+                'B-ORG': 'b o',
+                'I-ORG': 'i o',
+                'B-WORK': 'b w',
+                'I-WORK': 'i w',
+                'B-CONF': 'b c',
+                'I-CONF': 'i c',
+                'B-EVT': 'b e',
+                'I-EVT': 'i e',
+                'B-TODO': 'b t',
+                'I-TODO': 'i t'
+            };
+
+            let tagItemField = 'NE-TAG';
+            let tagItemData = row.data[tagItemField];
+            let tagItemTag = function (tag) {
+                table.data[this.parentRow.nRow][this.field] = tag;
+                this.setData(tag);
+                this.fill();
                 table.notifyChange()
-            }
+            };
+            let tagItemOnClick = function () {
+                if (table.beingEdited) return;
 
-            let tagItem = new TableItem(row.data['NE-TAG'], true);
-            tagItem.setClickAction(table.makeTagEdit);
-            tagItem.setFillAction(() => tagItem.setText(tagItem.data));
-            tagItem.setSequenceCombo('b p', () => tagAction('B-PER', 'NE-TAG', tagItem));
-            tagItem.setSequenceCombo('b l', () => tagAction('B-LOC', 'NE-TAG', tagItem));
-            tagItem.setSequenceCombo('b o', () => tagAction('B-ORG', 'NE-TAG', tagItem));
-            tagItem.setSequenceCombo('b w', () => tagAction('B-WORK', 'NE-TAG', tagItem));
-            tagItem.setSequenceCombo('b c', () => tagAction('B-CONF', 'NE-TAG', tagItem));
-            tagItem.setSequenceCombo('b e', () => tagAction('B-EVT', 'NE-TAG', tagItem));
-            tagItem.setSequenceCombo('b t', () => tagAction('B-TODO', 'NE-TAG', tagItem));
-            tagItem.setSequenceCombo('i p', () => tagAction('I-PER', 'NE-TAG', tagItem));
-            tagItem.setSequenceCombo('i l', () => tagAction('I-LOC', 'NE-TAG', tagItem));
-            tagItem.setSequenceCombo('i o', () => tagAction('I-ORG', 'NE-TAG', tagItem));
-            tagItem.setSequenceCombo('i w', () => tagAction('I-WORK', 'NE-TAG', tagItem));
-            tagItem.setSequenceCombo('i c', () => tagAction('I-CONF', 'NE-TAG', tagItem));
-            tagItem.setSequenceCombo('i e', () => tagAction('I-EVT', 'NE-TAG', tagItem));
-            tagItem.setSequenceCombo('i t', () => tagAction('I-TODO', 'NE-TAG', tagItem));
-            tagItem.setSimpleCombo('backspace', () => tagAction('O', 'NE-TAG', tagItem));
-            row.addItem('NE-TAG', tagItem);
+                table.beingEdited = true;
 
-            tagItem = new TableItem(row.data['NE-EMB'], true);
-            tagItem.setClickAction(table.makeTagEdit);
-            tagItem.setFillAction(() => tagItem.setText(tagItem.data));
-            tagItem.setSequenceCombo('b p', () => tagAction('B-PER', 'NE-EMB', tagItem));
-            tagItem.setSequenceCombo('b l', () => tagAction('B-LOC', 'NE-EMB', tagItem));
-            tagItem.setSequenceCombo('b o', () => tagAction('B-ORG', 'NE-EMB', tagItem));
-            tagItem.setSequenceCombo('b w', () => tagAction('B-WORK', 'NE-EMB', tagItem));
-            tagItem.setSequenceCombo('b c', () => tagAction('B-CONF', 'NE-EMB', tagItem));
-            tagItem.setSequenceCombo('b e', () => tagAction('B-EVT', 'NE-EMB', tagItem));
-            tagItem.setSequenceCombo('b t', () => tagAction('B-TODO', 'NE-EMB', tagItem));
-            tagItem.setSequenceCombo('i p', () => tagAction('I-PER', 'NE-EMB', tagItem));
-            tagItem.setSequenceCombo('i l', () => tagAction('I-LOC', 'NE-EMB', tagItem));
-            tagItem.setSequenceCombo('i o', () => tagAction('I-ORG', 'NE-EMB', tagItem));
-            tagItem.setSequenceCombo('i w', () => tagAction('I-WORK', 'NE-EMB', tagItem));
-            tagItem.setSequenceCombo('i c', () => tagAction('I-CONF', 'NE-EMB', tagItem));
-            tagItem.setSequenceCombo('i e', () => tagAction('I-EVT', 'NE-EMB', tagItem));
-            tagItem.setSequenceCombo('i t', () => tagAction('I-TODO', 'NE-EMB', tagItem));
-            tagItem.setSimpleCombo('backspace', () => tagAction('O', 'NE-EMB', tagItem));
-            row.addItem('NE-EMB', tagItem);
+                let performTag = function (tag) {
+                    this.setClass("editable hover");
 
-            let idItem = new TableItem(row.data['ID'], true);
-            idItem.setClickAction(table.makeTdEditable);
-            idItem.setFillAction(() => {
-                if (String(idItem.data).match(/^Q[0-9]+.*/g) == null) {
-                    idItem.setText(idItem.data)
+                    tagItemTag.bind(this)(tag);
+                    this.fill();
+
+                    $(this.element.lastChild).mouseleave();
+
+                    table.beingEdited = false
+                };
+
+                let cancel = function () {
+                    this.setClass("editable hover");
+                    this.fill();
+
+                    table.beingEdited = false
+                };
+
+                let tagger = document.createElement('div');
+                tagger.className = "accordion";
+                tagger.style = "display:block;";
+
+                let o_section = document.createElement('section');
+                o_section.className = "accordion-item type_select";
+                o_section.innerText = "O";
+                o_section.onclick = (evt) => performTag.bind(this)($(evt.target).text().trim());
+
+                tagger.append(o_section);
+
+                let b_section = document.createElement('section');
+                b_section.className = "accordion-item";
+                b_section.innerText = "B";
+
+                tagger.append(b_section);
+
+                let b_section_content = document.createElement('div');
+                b_section_content.className = "accordion-item-content";
+
+                b_section.append(b_section_content);
+
+                Object.entries(bTagClasses).forEach(([tag, className]) => {
+                    let elm = document.createElement('div');
+                    elm.className = className + " type_select";
+                    elm.innerText = tag;
+                    elm.onclick = (evt) => performTag.bind(this)($(evt.target).text().trim());
+
+                    b_section_content.append(elm)
+                });
+
+                let i_section = document.createElement('section');
+                i_section.className = "accordion-item";
+                i_section.innerText = "I";
+
+                tagger.append(i_section);
+
+                let i_section_content = document.createElement('div');
+                i_section_content.className = "accordion-item-content";
+
+                i_section.append(i_section_content);
+
+                Object.entries(iTagClasses).forEach(([tag, className]) => {
+                    let elm = document.createElement('div');
+                    elm.className = className + " type_select";
+                    elm.innerText = tag;
+                    elm.onclick = (evt) => performTag.bind(this)($(evt.target).text().trim());
+
+                    i_section_content.append(elm)
+                });
+
+                this.clear();
+                this.setClass("hover");
+                this.element.append(tagger);
+
+                $(tagger).mouseleave(cancel.bind(this))
+            };
+            let tagItemFill = function () {
+                this.clear();
+                this.setText(this.data);
+                if (this.data.includes("B-")) {
+                    let myClass = bTagClasses[this.data];
+                    this.setClass(this.isEditable ? "editable hover " + myClass : "hover " + myClass)
+                }
+                else if (this.data.includes("I-")) {
+                    let myClass = iTagClasses[this.data]
+                    this.setClass(this.isEditable ? "editable hover " + myClass : "hover " + myClass)
                 }
                 else {
-                    idItem.clear();
+                    this.setClass(this.isEditable ? "editable hover" : "hover")
+                }
+            };
+
+            let tagItem = new TableItem(tagItemData, tagItemField, row, true);
+
+            tagItem.setOnClick(tagItemOnClick.bind(tagItem));
+            tagItem.setFill(tagItemFill.bind(tagItem));
+            Object.entries(tagCombos).forEach(([tag, combo]) => {
+                tagItem.setSequenceCombo(combo, () => tagItemTag.bind(tagItem)(tag))
+            });
+            tagItem.setSimpleCombo('backspace', () => tagItemTag.bind(tagItem)('O'));
+            row.addItem(tagItemField, tagItem);
+
+            tagItemField = 'NE-EMB';
+            tagItemData = row.data[tagItemField];
+
+            tagItem = new TableItem(tagItemData, tagItemField, row, true);
+
+            tagItem.setOnClick(tagItemOnClick.bind(tagItem));
+            tagItem.setFill(tagItemFill.bind(tagItem));
+            Object.entries(tagCombos).forEach(([tag, combo]) => {
+                tagItem.setSequenceCombo(combo, () => tagItemTag.bind(tagItem)(tag))
+            });
+            tagItem.setSimpleCombo('backspace', () => tagItemTag.bind(tagItem)('O'));
+            row.addItem(tagItemField, tagItem);
+
+            let idItemField = 'ID';
+            let idItemData = row.data[idItemField];
+            let idItemOnClick = tokenItemOnClick;
+            let idItemFill = function () {
+                this.clear();
+                if (String(this.data).match(/^Q[0-9]+.*/g) == null) {
+                    this.setText(this.data)
+                }
+                else {
+                    this.clear();
 
                     let regex = /.*?(Q[0-9]+).*?/g;
                     for (let i = 0; i <= 2; ++i) {
-                        match = regex.exec(idItem.data);
+                        match = regex.exec(this.data);
                         if (match === null) {
                             break
                         }
 
-                        idItem.setLink("https://www.wikidata.org/wiki/" + match[1], match[1])
+                        let url = "https://www.wikidata.org/wiki/" + match[1];
+                        let text = match[1];
+
+                        let link = document.createElement('a');
+                        link.innerText = text;
+                        link.href = url;
+                        link.onclick = (event) => event.stopPropagation();
+
+                        this.element.append(link);
+                        this.element.append(document.createElement('br'))
                     }
                 }
-            });
-            idItem.setSimpleCombo('enter', idItem.clickAction);
-            row.addItem('ID', idItem);
+            };
+
+            let idItem = new TableItem(idItemData, idItemField, row, true);
+
+            idItem.setOnClick(idItemOnClick.bind(idItem));
+            idItem.setFill(idItemFill.bind(idItem));
+            idItem.setSimpleCombo('enter', idItem.onclick);
+            row.addItem(idItemField, idItem);
 
             Object.entries(row.items).forEach(([field, item]) => {
                 item.setOnMouseOver((event) => {
-                    if (table.editingTd == null) {
+                    if (!table.beingEdited) {
                         $(event.target).focus()
                     }
                 });
-                item.fillAction()
+                item.fill()
             });
 
-            table.body.addRow(row)
+            table.body.addRow(row);
+            prevRow = row
         }
-
-        table.colorCodeNETag();
 
         if ($("#docpos").val() != table.startIndex) {
             $("#docpos").val(table.data.length - table.startIndex)
         }
-
-        console.log('done');
-    },
-
-    getDataFields: function () {
-        return table.fields.filter(x => table.dataFields.has(x))
-    },
-
-    getCtrlFields: function () {
-        return table.fields.filter(x => table.ctrlFields.has(x))
-    },
-
-    getHiddenFields: function () {
-        return table.fields.filter(x => table.hiddenFields.has(x))
-    },
-
-    getEditFields: function () {
-        return table.fields.filter(x => table.editFields.has(x))
-    },
-
-    getTextFields: function () {
-        return table.fields.filter(x => table.textFields.has(x))
-    },
-
-    getLinkFields: function () {
-        return table.fields.filter(x => table.linkFields.has(x))
-    },
-
-    getTagFields: function () {
-        return table.fields.filter(x => table.tagFields.has(x))
-    },
-
-    getConfFields: function () {
-        return table.fields.filter(x => table.confFields.has(x))
     },
 
     stepsBackward: function (nrows) {
-        if (table.editingTd != null) return;
+        if (table.beingEdited) return;
 
         if (table.startIndex >= nrows) {
             table.startIndex -= nrows;
@@ -406,7 +736,7 @@ let table = {
     },
 
     stepsForward: function (nrows) {
-        if (table.editingTd != null) return;
+        if (table.beingEdited) return;
 
         if (table.endIndex + nrows < table.data.length) {
             table.endIndex += nrows;
@@ -418,243 +748,6 @@ let table = {
         }
 
         table.update()
-    },
-
-    sentenceAction: function (nRow) {
-        if (table.editingTd != null) return true;
-
-        let new_line = JSON.parse(JSON.stringify(table.data[nRow]));
-
-        table.getEditFields().forEach(col => {
-            new_line[col] = ''
-        });
-
-        table.getTagFields().forEach(col => {
-            new_line[col] = 'O'
-        });
-
-        table.data.splice(nRow, 0, new_line);
-
-        table.sanitize();
-        table.notifyChange();
-        table.update()
-    },
-
-    mergeAction: function (nRow) {
-        if (table.editingTd != null) return;
-
-        if (nRow < 1) return;
-
-        table.getTextFields().forEach(col => {
-            table.data[nRow - 1][col] = table.data[nRow - 1][col].toString() + table.data[nRow][col].toString()
-        });
-
-        table.data.splice(nRow, 1);
-
-        table.sanitize();
-        table.notifyChange();
-        table.update()
-    },
-
-    splitAction: function (nRow) {
-        if (table.editingTd != null) return;
-
-        table.data.splice(nRow, 0, JSON.parse(JSON.stringify(table.data[nRow])));
-
-        table.sanitize();
-        table.notifyChange();
-        table.update()
-    },
-
-    deleteAction: function (nRow) {
-        if (table.editingTd != null) return;
-
-        table.data.splice(nRow, 1);
-
-        table.sanitize();
-        table.notifyChange();
-        table.update()
-    },
-
-    makeLineSplitMerge: function (td) {
-        let tableInfo = $(td).data('tableInfo');
-
-        table.editingTd = {
-            data: table.data[tableInfo.nRow][tableInfo.column],
-            performAction: function (action) {
-                $(td).html(table.editingTd.data);
-                $(td).addClass('editable');
-
-                table.editingTd = null;
-
-                switch (action) {
-                    case 'sentence':
-                        table.sentenceAction(table, tableInfo.nRow);
-                        break;
-                    case 'split':
-                        table.splitAction(table, tableInfo.nRow);
-                        break;
-                    case 'merge':
-                        table.mergeAction(table, tableInfo.nRow);
-                        break;
-                    case 'delete':
-                        table.deleteAction(table, tableInfo.nRow);
-                        break;
-                    default:
-                }
-
-                $(td).focus()
-            },
-            cancel: function () {
-                $(td).html(table.editingTd.data);
-                $(td).addClass('editable');
-
-                table.editingTd = null;
-
-                $(td).focus()
-            }
-        };
-
-        let edit_html = `
-            <div class="accordion" id="tokenizer" style="display:block;">
-                <section class="accordion-item tokenizer-action" id="split">&#8597;&nbsp;&nbsp;split</section>
-                <section class="accordion-item tokenizer-action" id="merge">&#10227;&nbsp;merge</section>
-                <section class="accordion-item tokenizer-action" id="sentence">&#9735;&nbsp;sentence</section>
-                <section class="accordion-item tokenizer-action" id="delete">&#9447;&nbsp;delete</section>
-            </div>`;
-
-        $(td).removeClass('editable');
-        $(td).html(edit_html);
-
-        $('#tokenizer').mouseleave( function(event) { table.editingTd.cancel(); });
-        $('.tokenizer-action').click(function(event) { table.editingTd.performAction(event.target.id); });
-    },
-
-    makeTdEditable: function (td, content) {
-        $(td).removeClass('editable');
-
-        let tableInfo = $(td).data('tableInfo');
-
-        table.editingTd = {
-            finish:
-                function (isOk) {
-                    $(td).addClass('editable');
-                    keyboard.listener.reset();
-                    listener.reset();
-
-                    if (isOk) {
-                        let newValue = $('#edit-area').val();
-
-                        table.data[tableInfo.nRow][tableInfo.column] = newValue;
-
-                        table.sanitize();
-                        table.notifyChange();
-                        table.update();
-                    }
-
-                    tableInfo.fillAction($(td));
-                    table.editingTd = null;
-
-                    $(".simple-keyboard").html("");
-
-                    $(td).focus();
-                }
-        };
-
-        let textArea = document.createElement('textarea');
-        textArea.style.width = td.clientWidth + 'px';
-        textArea.style.height = td.clientHeight + 'px';
-        textArea.className = "input";
-        textArea.id = 'edit-area';
-
-        $(textArea).val(table.data[tableInfo.nRow][tableInfo.column]);
-        $(td).html('');
-        $(td).append(textArea);
-        textArea.focus();
-
-        let edit_html =
-            `<div>
-                <button class="btn btn-secondary btn-sm" id="edit-ok">OK</button>
-                <button class="btn btn-secondary btn-sm" id="edit-cancel">CANCEL</button>
-                <!--<button class="btn btn-secondary btn-sm" id="keyboard">Toggle Keyboard</button>
-                <div class="simple-keyboard"></div>-->
-             </div>`;
-
-        td.insertAdjacentHTML("beforeEnd", edit_html);
-
-        $('#edit-ok').on('click', function (evt) {
-            table.editingTd.finish(true)
-        });
-
-        $('#edit-cancel').on('click', function (evt) {
-            table.editingTd.finish(false)
-        });
-
-        let keyboard = new Keyboard(textArea, table.listener_defaults);
-
-        let listener = new window.keypress.Listener($('#edit-area'), table.listener_defaults);
-
-        listener.simple_combo('enter', function() { $('#edit-ok').click(); } );
-        listener.simple_combo('esc', function() { $('#edit-cancel').click(); } );
-        listener.simple_combo('ctrl', keyboard.toggleLayout.bind(keyboard));
-    },
-
-    makeTagEdit: function (td) {
-        let tableInfo = $(td).data('tableInfo');
-
-        table.editingTd = {
-            data: table.data[tableInfo.nRow][tableInfo.column],
-            finish: function(isOk) {
-                tableInfo.fillAction($(td))
-
-                $(td).addClass('editable');
-
-                table.editingTd = null;
-
-                table.colorCodeNETag();
-
-                table.notifyChange();
-            }
-        };
-
-        let edit_html = `
-            <div class="accordion" id="tagger" style="display:block;">
-                <section class="accordion-item type_select">O
-                </section>
-                <section class="accordion-item">B
-                    <div class="accordion-item-content">
-                        <div class="ner_per type_select">B-PER</div>
-                        <div class="ner_loc type_select">B-LOC</div>
-                        <div class="ner_org type_select">B-ORG</div>
-                        <div class="ner_work type_select">B-WORK</div>
-                        <div class="ner_conf type_select">B-CONF</div>
-                        <div class="ner_evt type_select">B-EVT</div>
-                        <div class="ner_todo type_select">B-TODO</div>
-                    </div>
-                </section>
-                <section class="accordion-item">I
-                    <div class="accordion-item-content">
-                        <div class="ner_per type_select">I-PER</div>
-                        <div class="ner_loc type_select">I-LOC</div>
-                        <div class="ner_org type_select">I-ORG</div>
-                        <div class="ner_work type_select">I-WORK</div>
-                        <div class="ner_conf type_select">I-CONF</div>
-                        <div class="ner_evt type_select">I-EVT</div>
-                        <div class="ner_todo type_select">I-TODO</div>
-                    </div>
-                </section>
-            </div>
-        `;
-
-        $(td).removeClass('editable');
-        $(td).html(edit_html);
-        $('#tagger').mouseleave( function(event) { table.editingTd.finish(false) });
-
-        $('.type_select').click(function (event) {
-            table.data[tableInfo.nRow][tableInfo.column] = $(event.target).text().trim();
-
-            table.editingTd.finish(true)
-        })
     },
 
     sanitize: function () {
@@ -693,46 +786,27 @@ let table = {
         table.data.forEach(row => {
             updateBounds(row);
 
-            table.getDataFields().forEach(col => {
+            Array(['TOKEN', 'NE-TAG', 'NE-EMB', 'ID']).forEach(col => {
                 if (nullValue(row, col)) {
                     null2empty(row, col)
                 }
                 removeEol(row, col)
             });
 
-            table.getTextFields().forEach(col => {
+            Array(['TOKEN']).forEach(col => {
                 if (emptyValue(row, col)) {
                     word_pos = 0
                 }
             });
 
-            row[table.nmbrField] = word_pos;
+            row['No.'] = word_pos;
 
             word_pos++
         })
     },
 
-    colorCodeNETag: function () {
-        $(".editable").removeClass(table.tagClasses);
-
-        $("#table td:contains('B-PER')").addClass('ner_per');
-        $("#table td:contains('I-PER')").addClass('ner_per');
-        $("#table td:contains('B-LOC')").addClass('ner_loc');
-        $("#table td:contains('I-LOC')").addClass('ner_loc');
-        $("#table td:contains('B-ORG')").addClass('ner_org');
-        $("#table td:contains('I-ORG')").addClass('ner_org');
-        $("#table td:contains('B-WORK')").addClass('ner_work');
-        $("#table td:contains('I-WORK')").addClass('ner_work');
-        $("#table td:contains('B-CONF')").addClass('ner_conf');
-        $("#table td:contains('I-CONF')").addClass('ner_conf');
-        $("#table td:contains('B-EVT')").addClass('ner_evt');
-        $("#table td:contains('I-EVT')").addClass('ner_evt');
-        $("#table td:contains('B-TODO')").addClass('ner_todo');
-        $("#table td:contains('I-TODO')").addClass('ner_todo');
-    },
-
     update: function () {
-        table.editingTd = null;
+        table.beingEdited = false;
 
         let pRow = 0;
 
@@ -741,20 +815,17 @@ let table = {
             row.setData(table.data[nRow]);
 
             Object.entries(row.items).forEach(([field, item]) => {
-                if (field == 'LOCATION') {
-                    item.setText(nRow.toString())
+                if (field === 'LOCATION') {
+                    item.setData(nRow.toString())
                 }
                 else {
-                    item.setData(row.data[field]);
-                    item.setText(row.data[field])
+                    item.setData(row.data[field])
                 }
-                item.fillAction()
+                item.fill()
             });
 
             pRow++
         }
-
-        table.colorCodeNETag();
 
         if ($("#docpos").val() != table.startIndex) {
             $("#docpos").val(table.data.length - table.startIndex)

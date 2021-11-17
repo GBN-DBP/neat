@@ -313,10 +313,10 @@ let table = {
             };
 
             let rowActionTexts = {
-                'sentence': '&#9735;&nbsp;sentence',
-                'split': '&#8597;&nbsp;&nbsp;split',
-                'merge': '&#10227;&nbsp;merge',
-                'delete': '&#9447;&nbsp;delete'
+                'sentence': '\u2607\u00a0sentence',
+                'split': '\u2195\u00a0\u00a0split',
+                'merge': '\u27f3\u00a0merge',
+                'delete': '\u24e7\u00a0delete'
             };
 
             let rowCombos = {
@@ -375,7 +375,7 @@ let table = {
                     let section = document.createElement('section');
                     section.className = "accordion-item tokenizer-action";
                     section.id = id;
-                    section.innerText = encodeURI(text);
+                    section.textContent = text;
 
                     tokenizer.append(section)
                 });

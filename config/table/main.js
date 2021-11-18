@@ -98,20 +98,12 @@ class TableItem {
         this.element.onmouseover = callback
     }
 
-    setFocus(callback) {
-        $(this.element).focus(callback)
+    hasFocus() {
+        return this.element == document.activeElement
     }
 
     clear() {
         this.element.innerHTML = ''
-    }
-
-    setClickAction(clickAction) {
-        this.clickAction = clickAction
-    }
-
-    setFillAction(fillAction) {
-        this.fillAction = fillAction
     }
 
     setSimpleCombo(keys, action) {
@@ -161,8 +153,12 @@ class TableRow {
         this.data = data
     }
 
-    setFocus(callback) {
-        $(this.element).focus(callback)
+    setOnFocusIn(callback) {
+        this.element.onfocusin = callback
+    }
+
+    hasFocusIn() {
+        return Object.keys(this.items).some((field) => this.items[field].hasFocus())
     }
 
     setSequenceCombo(keys, action) {
@@ -195,23 +191,25 @@ let table = {
     startIndex: 0,
     endIndex: 15,
 
-    head: null,
-    body: null,
-
     minLeft: 1000000000,
     maxRight: 0,
     minTop: 1000000000,
     maxBottom: 0,
 
+    fields: ['No.', 'TOKEN', 'NE-TAG', 'NE-EMB', 'ID'],
+
     data: null,
-
-    element: null,
-
     urls: null,
     listener_defaults: null,
     notifyChange: null,
 
     beingEdited: false,
+    finish: null,
+
+    head: null,
+    body: null,
+
+    element: null,
 
     init: function (data, urls, listener_defaults, notifyChange) {
         table.data = data.data;
@@ -224,16 +222,14 @@ let table = {
         table.element = document.createElement('table');
         table.element.id = "table";
 
-        let fields = ['No.', 'TOKEN', 'NE-TAG', 'NE-EMB', 'ID'];
-
-        table.head = new TableHead(fields);
+        table.head = new TableHead(table.fields);
         table.element.append(table.head.element);
 
         table.head.addField("LOCATION");
-        fields.forEach((field) => table.head.addField(field));
+        table.fields.forEach((field) => table.head.addField(field));
 
-        table.head.setPrevButton(function () { table.stepsBackward(table.displayRows) });
-        table.head.setNextButton(function () { table.stepsForward(table.displayRows) });
+        table.head.setPrevButton(() => table.stepsBackward(table.displayRows));
+        table.head.setNextButton(() => table.stepsForward(table.displayRows));
 
         table.body = new TableBody();
         table.element.append(table.body.element);
@@ -247,8 +243,7 @@ let table = {
                 prevRow.setNextRow(row);
             }
         
-            // row.setFocus(() => {
-            $(row.element).focusin(() => {
+            row.setOnFocusIn(() => {
                 updatePreview(row.data, table.urls);
 
                 $('#preview-rgn').css('transform', 'translate(0,' + ($(row.element).position().top + $(row.element).height()/2) + 'px)'
@@ -314,7 +309,7 @@ let table = {
 
             let rowActionTexts = {
                 'sentence': '\u2607\u00a0sentence',
-                'split': '\u2195\u00a0\u00a0split',
+                'split': '\u2195\u00a0split',
                 'merge': '\u27f3\u00a0merge',
                 'delete': '\u24e7\u00a0delete'
             };
@@ -356,14 +351,14 @@ let table = {
 
                     rowActions[action].bind(this.parentRow)();
 
-                    $(this.element).focus()
+                    this.element.focus()
                 };
 
                 let cancel = function () {
                     this.setText(this.data);
                     this.setClass("editable hover");
 
-                    $(this.element).focus()
+                    this.element.focus()
                 };
 
                 let tokenizer = document.createElement('div');
@@ -376,16 +371,16 @@ let table = {
                     section.className = "accordion-item tokenizer-action";
                     section.id = id;
                     section.textContent = text;
+                    section.onclick = (evt) => {
+                        evt.stopPropagation();
+                        performAction.bind(this)(evt.target.id)
+                    };
 
                     tokenizer.append(section)
                 });
                 this.element.append(tokenizer);
 
-                $('#tokenizer').mouseleave(cancel.bind(this));
-                $('.tokenizer-action').click((evt) => {
-                    evt.stopPropagation();
-                    performAction.bind(this)(evt.target.id)
-                })
+                tokenizer.onmouseleave = cancel.bind(this);
             };
             let noItemFill = function () {
                 this.clear();
@@ -406,7 +401,7 @@ let table = {
                 table.beingEdited = true;
 
                 this.clear();
-                this.setClass("editable hover");
+                this.setClass("hover");
                 
                 let confirm = function (keyboard, listener, textArea) {
                     this.setClass("editable hover");
@@ -425,7 +420,7 @@ let table = {
                     // this.keyboard.clear();
                     $('.simple-keyboard').html("");
 
-                    $(this.element).focus()
+                    this.element.focus()
                 };
 
                 let cancel = function (keyboard, listener) {
@@ -442,7 +437,7 @@ let table = {
                     // this.keyboard.clear();
                     $('.simple-keyboard').html("");
 
-                    $(this.element).focus()
+                    this.element.focus()
                 };
 
                 let textArea = document.createElement('textarea');
@@ -452,7 +447,7 @@ let table = {
 
                 textArea.value = this.data;
                 this.element.append(textArea);
-                $(textArea).focus();
+                textArea.focus();
 
                 let buttons = document.createElement('div');
 
@@ -540,14 +535,17 @@ let table = {
             let tagItemData = row.data[tagItemField];
             let tagItemTag = function (tag) {
                 table.data[this.parentRow.nRow][this.field] = tag;
-                this.setData(tag);
-                this.fill();
-                table.notifyChange()
+                table.sanitize();
+                table.notifyChange();
+                table.update()
             };
             let tagItemOnClick = function () {
                 if (table.beingEdited) return;
 
                 table.beingEdited = true;
+
+                this.clear();
+                this.setClass("hover");
 
                 let performTag = function (tag) {
                     this.setClass("editable hover");
@@ -555,14 +553,12 @@ let table = {
                     tagItemTag.bind(this)(tag);
                     this.fill();
 
-                    $(this.element.lastChild).mouseleave();
-
                     table.beingEdited = false
                 };
 
                 let cancel = function () {
                     this.setClass("editable hover");
-                    this.fill();
+                    table.update();
 
                     table.beingEdited = false
                 };
@@ -618,8 +614,6 @@ let table = {
                     i_section_content.append(elm)
                 });
 
-                this.clear();
-                this.setClass("hover");
                 this.element.append(tagger);
 
                 $(tagger).mouseleave(cancel.bind(this))
@@ -705,7 +699,7 @@ let table = {
             Object.entries(row.items).forEach(([field, item]) => {
                 item.setOnMouseOver((event) => {
                     if (!table.beingEdited) {
-                        $(event.target).focus()
+                        event.target.focus()
                     }
                 });
                 item.fill()
@@ -831,8 +825,10 @@ let table = {
             $("#docpos").val(table.data.length - table.startIndex)
         }
 
-        if ($(':focus').data('tableInfo')) {
-            updatePreview(table.data[$(':focus').data('tableInfo').nRow], table.urls)
-        }
+        table.body.rows.forEach((row) => {
+            if (row.hasFocusIn()) {
+                updatePreview(row.data, table.urls)
+            }
+        })
     }
 }

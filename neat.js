@@ -265,7 +265,7 @@ function setupInterface(data, file, urls) {
             });
 
 
-        table.init(data, urls, listener_defaults, notifyChange)
+        table.init(data, $('#preview-rgn')[0], $('#docpos')[0], $('.simple-keyboard')[0], urls, listener_defaults, notifyChange)
 
         table.element.append(document.createElement('br'));
         table.element.append(document.createElement('br'));

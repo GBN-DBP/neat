@@ -1,13 +1,14 @@
 class Keyboard {
-    constructor(text_area, listener_defaults) {
-        this.listener = new window.keypress.Listener($('#simple-keyboard'), listener_defaults);
+    constructor(table, textArea) {
+        this.textArea = textArea;
+        this.listener = new window.keypress.Listener($('#simple-keyboard'), table.listener_defaults);
 
-        this.listener.simple_combo('enter', function() { $('#edit-ok').click(); } );
-        this.listener.simple_combo('esc', function() { $('#edit-cancel').click(); } );
+        this.listener.simple_combo('enter', () => table.finish(true));
+        this.listener.simple_combo('esc', () => table.finish(false));
         this.listener.simple_combo('ctrl', this.toggleLayout.bind(this));
 
         this.layout = new window.SimpleKeyboard.default({
-            onChange: input => this.onChange(input),
+            onChange: (input) => this.textArea.value = input,
             layout: {
                 'default': [
                     "\uF1AC \u00AD \u00AC \u00BD \u00C0 \u00C3 \u00C4 \u00C6 \u00E0 \u00E3 \u00E4 \u00E6 \u0101 \u023A \u2C65 \uE42C",
@@ -29,21 +30,15 @@ class Keyboard {
             }
         });
 
-        this.layout.setInput($(text_area).val());
+        this.layout.setInput(this.textArea.value);
 
-        $(text_area).on('input', (function() {
-            this.layout.setInput($(text_area).val());
-        }).bind(this));
-    }
-
-    onChange(input) {
-        document.querySelector("#edit-area").value = input;
+        this.textArea.oninput = this.layout.setInput(this.textArea.value)
     }
 
     toggleLayout() {
         let layout_name = this.layout.options.layoutName;
         let layout_toggle = layout_name === "default" ? "layout1" : "default";
 
-        this.layout.setOptions( { layoutName: layout_toggle } );
+        this.layout.setOptions({layoutName: layout_toggle})
     }
 }

@@ -207,6 +207,9 @@ let table = {
     fields: ['No.', 'TOKEN', 'NE-TAG', 'NE-EMB', 'ID'],
 
     data: null,
+    previewRgn: null,
+    sliderRgn: null,
+    keyboardRgn: null,
     urls: null,
     listener_defaults: null,
     notifyChange: null,
@@ -219,8 +222,11 @@ let table = {
 
     element: null,
 
-    init: function (data, urls, listener_defaults, notifyChange) {
+    init: function (data, previewRgn, sliderRgn, keyboardRgn, urls, listener_defaults, notifyChange) {
         table.data = data.data;
+        table.previewRgn = previewRgn;
+        table.sliderRgn = sliderRgn;
+        table.keyboardRgn = keyboardRgn;
         table.urls = urls;
         table.listener_defaults = listener_defaults;
         table.notifyChange = notifyChange;
@@ -254,8 +260,8 @@ let table = {
             row.setOnFocusIn(() => {
                 updatePreview(row.data, table.urls);
 
-                $('#preview-rgn').css('transform', 'translate(0,' + ($(row.element).position().top + $(row.element).height()/2) + 'px)'
-                    + ' translate(0%,-50%)')
+                table.previewRgn.style.transform = 'translate(0,'
+                    + (row.element.offsetTop + row.element.clientHeight/2) + 'px) translate(0%,-50%)'
             });
 
             let rowSentenceAction = function () {
@@ -435,7 +441,7 @@ let table = {
 
                 this.append(buttons);
 
-                let keyboard = new Keyboard(textArea, table.listener_defaults);
+                let keyboard = new Keyboard(table, textArea);
 
                 let listener = new window.keypress.Listener(textArea, table.listener_defaults);
 
@@ -456,7 +462,7 @@ let table = {
                     table.beingEdited = false;
 
                     // this.keyboard.clear();
-                    $('.simple-keyboard').html("");
+                    table.keyboardRgn.innerHTML = "";
 
                     this.focus()
                 };
@@ -631,7 +637,7 @@ let table = {
                     elm.onclick = (evt) => table.finish(true, evt.target.textContent.trim())
                 });
 
-                $(tagger).mouseleave(() => table.finish(false))
+                tagger.onmouseleave = (() => table.finish(false))
             };
             let neTagItemFill = function () {
                 this.clear();
@@ -726,8 +732,8 @@ let table = {
             prevRow = row
         }
 
-        if ($("#docpos").val() != table.startIndex) {
-            $("#docpos").val(table.data.length - table.startIndex)
+        if (table.sliderRgn.value != table.startIndex) {
+            table.sliderRgn.value = table.data.length - table.startIndex
         }
     },
 
@@ -838,8 +844,8 @@ let table = {
             pRow++
         }
 
-        if ($("#docpos").val() != table.startIndex) {
-            $("#docpos").val(table.data.length - table.startIndex)
+        if (table.sliderRgn.value != table.startIndex) {
+            table.sliderRgn.value = table.data.length - table.startIndex
         }
 
         table.body.rows.forEach((row) => {

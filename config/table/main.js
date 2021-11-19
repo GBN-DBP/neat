@@ -98,6 +98,14 @@ class TableItem {
         this.element.onmouseover = callback
     }
 
+    append(elm) {
+        this.element.append(elm)
+    }
+
+    focus() {
+        this.element.focus()
+    }
+
     hasFocus() {
         return this.element == document.activeElement
     }
@@ -339,27 +347,11 @@ let table = {
 
             let noItemField = 'No.';
             let noItemData = row.data[noItemField];
-            let noItemOnClick = function () {
+            let noItemSelect = function () {
                 if (table.beingEdited) return;
 
                 this.clear();
                 this.setClass("hover");
-
-                let performAction = function (action) {
-                    this.setText(this.data);
-                    this.setClass("editable hover");
-
-                    rowActions[action].bind(this.parentRow)();
-
-                    this.element.focus()
-                };
-
-                let cancel = function () {
-                    this.setText(this.data);
-                    this.setClass("editable hover");
-
-                    this.element.focus()
-                };
 
                 let tokenizer = document.createElement('div');
                 tokenizer.className = "accordion";
@@ -371,16 +363,32 @@ let table = {
                     section.className = "accordion-item tokenizer-action";
                     section.id = id;
                     section.textContent = text;
-                    section.onclick = (evt) => {
-                        evt.stopPropagation();
-                        performAction.bind(this)(evt.target.id)
-                    };
 
                     tokenizer.append(section)
                 });
-                this.element.append(tokenizer);
 
-                tokenizer.onmouseleave = cancel.bind(this);
+                this.append(tokenizer);
+
+                table.finish = (isOk, evt = null) => {
+                    this.setClass("editable hover");
+                    this.fill();
+
+                    if (isOk) {
+                        let action = evt.target.id;
+                        if (action in rowActions) rowActions[action].bind(this.parentRow)()
+                    }
+
+                    this.focus()
+                };
+
+                Array.from(tokenizer.childNodes).forEach((section) => {
+                    section.onclick = (evt) => {
+                        evt.stopPropagation();
+                        table.finish(true, evt)
+                    };
+                });
+
+                tokenizer.onmouseleave = () => table.finish(false)
             };
             let noItemFill = function () {
                 this.clear();
@@ -389,64 +397,27 @@ let table = {
 
             let noItem = new TableItem(noItemData, noItemField, row, true);
 
-            noItem.setOnClick(noItemOnClick.bind(noItem));
+            noItem.setOnClick(noItemSelect.bind(noItem));
             noItem.setFill(noItemFill.bind(noItem));
             row.addItem(noItemField, noItem);
 
             let tokenItemField = 'TOKEN';
             let tokenItemData = row.data[tokenItemField];
-            let tokenItemOnClick = function () {
+            let tokenItemSelect = function () {
                 if (table.beingEdited) return;
 
                 table.beingEdited = true;
 
                 this.clear();
                 this.setClass("hover");
-                
-                let confirm = function (keyboard, listener, textArea) {
-                    this.setClass("editable hover");
-                    keyboard.listener.reset();
-                    listener.reset();
-
-                    this.setData(textArea.value);
-                    table.data[this.parentRow.nRow][this.field] = this.data;
-
-                    table.sanitize();
-                    table.notifyChange();
-                    table.update();
-
-                    table.beingEdited = false;
-
-                    // this.keyboard.clear();
-                    $('.simple-keyboard').html("");
-
-                    this.element.focus()
-                };
-
-                let cancel = function (keyboard, listener) {
-                    this.setClass("editable hover");
-                    keyboard.listener.reset();
-                    listener.reset();
-
-                    table.sanitize();
-                    table.notifyChange();
-                    table.update();
-
-                    table.beingEdited = false;
-
-                    // this.keyboard.clear();
-                    $('.simple-keyboard').html("");
-
-                    this.element.focus()
-                };
 
                 let textArea = document.createElement('textarea');
                 textArea.style.width = this.element.clientWidth + 'px';
                 textArea.style.height = this.element.clientHeight + 'px';
                 textArea.className = "input";
-
                 textArea.value = this.data;
-                this.element.append(textArea);
+
+                this.append(textArea);
                 textArea.focus();
 
                 let buttons = document.createElement('div');
@@ -462,23 +433,45 @@ let table = {
                 cancel_btn.innerText = "CANCEL";
                 buttons.append(cancel_btn);
 
-                this.element.append(buttons);
+                this.append(buttons);
 
                 let keyboard = new Keyboard(textArea, table.listener_defaults);
 
                 let listener = new window.keypress.Listener(textArea, table.listener_defaults);
 
-                listener.simple_combo('enter', () => confirm.bind(this)(keyboard, listener, textArea));
-                listener.simple_combo('esc', () => cancel.bind(this)(keyboard, listener));
+                table.finish = (isOk) => {
+                    this.setClass("editable hover");
+                    keyboard.listener.reset();
+                    listener.reset();
+
+                    if (isOk) {
+                        let data = textArea.value;
+                        table.data[this.parentRow.nRow][this.field] = data
+                    }
+
+                    table.sanitize();
+                    table.notifyChange();
+                    table.update();
+
+                    table.beingEdited = false;
+
+                    // this.keyboard.clear();
+                    $('.simple-keyboard').html("");
+
+                    this.focus()
+                };
+
+                listener.simple_combo('enter', () => table.finish(true));
+                listener.simple_combo('esc', () => table.finish(false));
                 listener.simple_combo('ctrl', keyboard.toggleLayout.bind(keyboard));
 
                 ok_btn.onclick = (evt) => {
                     evt.stopPropagation();
-                    confirm.bind(this)(keyboard, listener, textArea)
+                    table.finish(true)
                 };
                 cancel_btn.onclick = (evt) => {
                     evt.stopPropagation();
-                    cancel.bind(this)(keyboard, listener)
+                    table.finish(false)
                 };
             };
             let tokenItemFill = function () {
@@ -489,10 +482,27 @@ let table = {
             // TODO: Set background color depending on confidence value (if available)
             let tokenItem = new TableItem(tokenItemData, tokenItemField, row, true);
 
-            tokenItem.setOnClick(tokenItemOnClick.bind(tokenItem));
+            tokenItem.setOnClick(tokenItemSelect.bind(tokenItem));
             tokenItem.setFill(tokenItemFill.bind(tokenItem));
-            tokenItem.setSimpleCombo('enter', tokenItemOnClick.bind(tokenItem));
+            tokenItem.setSimpleCombo('enter', tokenItemSelect.bind(tokenItem));
             row.addItem(tokenItemField, tokenItem);
+
+            let tags = [
+                'B-PER',
+                'B-LOC',
+                'B-ORG',
+                'B-WORK',
+                'B-CONF',
+                'B-EVT',
+                'B-TODO',
+                'I-PER',
+                'I-LOC',
+                'I-ORG',
+                'I-WORK',
+                'I-CONF',
+                'I-EVT',
+                'I-TODO'
+            ];
 
             let bTagClasses = {
                 'B-PER': 'ner_per',
@@ -531,37 +541,22 @@ let table = {
                 'I-TODO': 'i t'
             };
 
-            let tagItemField = 'NE-TAG';
-            let tagItemData = row.data[tagItemField];
-            let tagItemTag = function (tag) {
+            let tagAction = function (tag) {
                 table.data[this.parentRow.nRow][this.field] = tag;
                 table.sanitize();
                 table.notifyChange();
                 table.update()
             };
-            let tagItemOnClick = function () {
+
+            let neTagItemField = 'NE-TAG';
+            let neTagItemData = row.data[neTagItemField];
+            let neTagItemSelect = function () {
                 if (table.beingEdited) return;
 
                 table.beingEdited = true;
 
                 this.clear();
                 this.setClass("hover");
-
-                let performTag = function (tag) {
-                    this.setClass("editable hover");
-
-                    tagItemTag.bind(this)(tag);
-                    this.fill();
-
-                    table.beingEdited = false
-                };
-
-                let cancel = function () {
-                    this.setClass("editable hover");
-                    table.update();
-
-                    table.beingEdited = false
-                };
 
                 let tagger = document.createElement('div');
                 tagger.className = "accordion";
@@ -570,7 +565,6 @@ let table = {
                 let o_section = document.createElement('section');
                 o_section.className = "accordion-item type_select";
                 o_section.innerText = "O";
-                o_section.onclick = (evt) => performTag.bind(this)($(evt.target).text().trim());
 
                 tagger.append(o_section);
 
@@ -589,7 +583,6 @@ let table = {
                     let elm = document.createElement('div');
                     elm.className = className + " type_select";
                     elm.innerText = tag;
-                    elm.onclick = (evt) => performTag.bind(this)($(evt.target).text().trim());
 
                     b_section_content.append(elm)
                 });
@@ -609,16 +602,38 @@ let table = {
                     let elm = document.createElement('div');
                     elm.className = className + " type_select";
                     elm.innerText = tag;
-                    elm.onclick = (evt) => performTag.bind(this)($(evt.target).text().trim());
 
                     i_section_content.append(elm)
                 });
 
-                this.element.append(tagger);
+                this.append(tagger);
 
-                $(tagger).mouseleave(cancel.bind(this))
+                table.finish = (isOk, tag = null) => {
+                    this.setClass("editable hover");
+
+                    if (isOk && tags.includes(tag)) {
+                        tagAction.bind(this)(tag)
+                    }
+
+                    this.fill();
+                    this.focus();
+
+                    table.beingEdited = false
+                };
+
+                o_section.onclick = (evt) => table.finish(true, 'O');
+
+                Array.from(b_section_content.childNodes).forEach((elm) => {
+                    elm.onclick = (evt) => table.finish(true, evt.target.textContent.trim())
+                });
+
+                Array.from(i_section_content.childNodes).forEach((elm) => {
+                    elm.onclick = (evt) => table.finish(true, evt.target.textContent.trim())
+                });
+
+                $(tagger).mouseleave(() => table.finish(false))
             };
-            let tagItemFill = function () {
+            let neTagItemFill = function () {
                 this.clear();
                 this.setText(this.data);
                 if (this.data.includes("B-")) {
@@ -634,32 +649,34 @@ let table = {
                 }
             };
 
-            let tagItem = new TableItem(tagItemData, tagItemField, row, true);
+            let neTagItem = new TableItem(neTagItemData, neTagItemField, row, true);
 
-            tagItem.setOnClick(tagItemOnClick.bind(tagItem));
-            tagItem.setFill(tagItemFill.bind(tagItem));
+            neTagItem.setOnClick(neTagItemSelect.bind(neTagItem));
+            neTagItem.setFill(neTagItemFill.bind(neTagItem));
             Object.entries(tagCombos).forEach(([tag, combo]) => {
-                tagItem.setSequenceCombo(combo, () => tagItemTag.bind(tagItem)(tag))
+                neTagItem.setSequenceCombo(combo, () => tagAction.bind(neTagItem)(tag))
             });
-            tagItem.setSimpleCombo('backspace', () => tagItemTag.bind(tagItem)('O'));
-            row.addItem(tagItemField, tagItem);
+            neTagItem.setSimpleCombo('backspace', () => tagAction.bind(neTagItem)('O'));
+            row.addItem(neTagItemField, neTagItem);
 
-            tagItemField = 'NE-EMB';
-            tagItemData = row.data[tagItemField];
+            let neEmbItemField = 'NE-EMB';
+            let neEmbItemData = row.data[neEmbItemField];
+            let neEmbItemSelect = neTagItemSelect;
+            let neEmbItemFill = neTagItemFill;
 
-            tagItem = new TableItem(tagItemData, tagItemField, row, true);
+            let neEmbItem = new TableItem(neEmbItemData, neEmbItemField, row, true);
 
-            tagItem.setOnClick(tagItemOnClick.bind(tagItem));
-            tagItem.setFill(tagItemFill.bind(tagItem));
+            neEmbItem.setOnClick(neEmbItemSelect.bind(neEmbItem));
+            neEmbItem.setFill(neEmbItemFill.bind(neEmbItem));
             Object.entries(tagCombos).forEach(([tag, combo]) => {
-                tagItem.setSequenceCombo(combo, () => tagItemTag.bind(tagItem)(tag))
+                neEmbItem.setSequenceCombo(combo, () => tagAction.bind(neEmbItem)(tag))
             });
-            tagItem.setSimpleCombo('backspace', () => tagItemTag.bind(tagItem)('O'));
-            row.addItem(tagItemField, tagItem);
+            neEmbItem.setSimpleCombo('backspace', () => tagAction.bind(neEmbItem)('O'));
+            row.addItem(neEmbItemField, neEmbItem);
 
             let idItemField = 'ID';
             let idItemData = row.data[idItemField];
-            let idItemOnClick = tokenItemOnClick;
+            let idItemSelect = tokenItemSelect;
             let idItemFill = function () {
                 this.clear();
                 if (String(this.data).match(/^Q[0-9]+.*/g) == null) {
@@ -691,7 +708,7 @@ let table = {
 
             let idItem = new TableItem(idItemData, idItemField, row, true);
 
-            idItem.setOnClick(idItemOnClick.bind(idItem));
+            idItem.setOnClick(idItemSelect.bind(idItem));
             idItem.setFill(idItemFill.bind(idItem));
             idItem.setSimpleCombo('enter', idItem.onclick);
             row.addItem(idItemField, idItem);

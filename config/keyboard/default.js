@@ -32,7 +32,7 @@ class Keyboard {
 
         this.layout.setInput(this.textArea.value);
 
-        this.textArea.oninput = this.layout.setInput(this.textArea.value)
+        this.textArea.oninput = () => this.layout.setInput(this.textArea.value)
     }
 
     toggleLayout() {

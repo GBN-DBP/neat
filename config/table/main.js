@@ -70,10 +70,6 @@ class TableItem {
         this.isEditable = !this.isEditable
     }
 
-    setData(data) {
-        this.data = data
-    }
-
     setFill(method) {
         this.fill = method
     }
@@ -148,17 +144,9 @@ class TableRow {
         this.listener = new window.keypress.Listener(this.element, { prevent_repeat: true })
     }
 
-    setNextRow(nextRow) {
-        this.nextRow = nextRow;
-    }
-
     addItem(field, item) {
         this.items[field] = item;
         this.element.append(item.element)
-    }
-
-    setData(data) {
-        this.data = data
     }
 
     setOnFocusIn(callback) {
@@ -254,7 +242,7 @@ let table = {
             let row = new TableRow(table.data[nRow], nRow, prevRow);
 
             if (prevRow != null) {
-                prevRow.setNextRow(row);
+                prevRow.nextRow = row;
             }
         
             row.setOnFocusIn(() => {
@@ -829,14 +817,14 @@ let table = {
 
         for (let nRow = table.startIndex; nRow < table.endIndex; ++nRow) {
             let row = table.body.rows[pRow];
-            row.setData(table.data[nRow]);
+            row.data = table.data[nRow];
 
             Object.entries(row.items).forEach(([field, item]) => {
                 if (field === 'LOCATION') {
-                    item.setData(nRow.toString())
+                    item.data = nRow.toString()
                 }
                 else {
-                    item.setData(row.data[field])
+                    item.data = row.data[field]
                 }
                 item.fill()
             });

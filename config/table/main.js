@@ -738,20 +738,6 @@ let table = {
     },
 
     sanitize: function () {
-        function null2empty(row, col) {
-            if (row[col] == null) {
-                row[col] = ''
-            }
-        }
-
-        function nullValue(row, col) {
-            return row[col] == null
-        }
-
-        function emptyValue(row, col) {
-            return row[col].toString().length == 0
-        }
-
         function removeEol(row, col) {
             row[col] = row[col].toString().replace(/(\r\n|\n|\r)/gm, "")
         }
@@ -770,20 +756,17 @@ let table = {
 
         let word_pos = 1;
 
-        table.data.forEach(row => {
+        table.data.forEach((row) => {
             updateBounds(row);
 
-            Array(['TOKEN', 'NE-TAG', 'NE-EMB', 'ID']).forEach(col => {
-                if (nullValue(row, col)) {
-                    null2empty(row, col)
+            Object.keys(row).forEach((col) => {
+                if (row[col] == null) {
+                    row[col] = "";
                 }
-                removeEol(row, col)
-            });
-
-            Array(['TOKEN']).forEach(col => {
-                if (emptyValue(row, col)) {
+                if (row[col] === "") {
                     word_pos = 0
                 }
+                removeEol(row, col)
             });
 
             row['No.'] = word_pos;

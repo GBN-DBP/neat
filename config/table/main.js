@@ -429,10 +429,6 @@ let table = {
 
                 this.append(buttons);
 
-                let keyboard = new Keyboard(table, textArea);
-
-                let listener = new window.keypress.Listener(textArea, table.listener_defaults);
-
                 table.finish = (isOk) => {
                     this.setClass("editable hover");
                     keyboard.listener.reset();
@@ -449,11 +445,14 @@ let table = {
 
                     table.beingEdited = false;
 
-                    // this.keyboard.clear();
-                    table.keyboardRgn.innerHTML = "";
+                    keyboard.clear();
 
                     this.focus()
                 };
+
+                let keyboard = new Keyboard(table.keyboardRgn, textArea, table.finish);
+
+                let listener = new window.keypress.Listener(textArea, {prevent_repeat: true});
 
                 listener.simple_combo('enter', () => table.finish(true));
                 listener.simple_combo('esc', () => table.finish(false));

@@ -1,10 +1,14 @@
 class Keyboard {
-    constructor(table, textArea) {
+    constructor(keyboardRgn, textArea, finishCallback) {
+        this.element = keyboardRgn;
         this.textArea = textArea;
-        this.listener = new window.keypress.Listener($('#simple-keyboard'), table.listener_defaults);
+        // This does not work:
+        this.listener = new window.keypress.Listener(this.element, {prevent_repeat: true});
+        // Original implementation works, but only because $('#simple-keyboard') returns an empty object (since
+        // simple-keyboard is a class name, not an id) and the listener defaults to the page body
 
-        this.listener.simple_combo('enter', () => table.finish(true));
-        this.listener.simple_combo('esc', () => table.finish(false));
+        this.listener.simple_combo('enter', () => finishCallback(true));
+        this.listener.simple_combo('esc', () => finishCallback(false));
         this.listener.simple_combo('ctrl', this.toggleLayout.bind(this));
 
         this.layout = new window.SimpleKeyboard.default({
@@ -40,5 +44,9 @@ class Keyboard {
         let layout_toggle = layout_name === "default" ? "layout1" : "default";
 
         this.layout.setOptions({layoutName: layout_toggle})
+    }
+
+    clear() {
+        this.element.innerHTML = ""
     }
 }

@@ -110,23 +110,12 @@ class TableItem {
         this.element.innerHTML = ''
     }
 
-    setSimpleCombo(keys, action) {
-        this.listener.simple_combo({
-            keys: keys,
-            on_keydown: action,
-            is_solitary: true,
-            is_exclusive: true
-        })
+    setSimpleCombo(key, action) {
+        this.listener.sequence_combo(key, action)
     }
 
     setSequenceCombo(keys, action) {
-        this.listener.sequence_combo({
-            keys: keys,
-            on_keydown: action,
-            is_sequence: true,
-            is_solitary: true,
-            is_exclusive: true
-        })
+        this.listener.sequence_combo(keys, action)
     }
 }
 
@@ -158,13 +147,7 @@ class TableRow {
     }
 
     setSequenceCombo(keys, action) {
-        this.listener.sequence_combo({
-            keys: keys,
-            on_keydown: action,
-            is_sequence: true,
-            is_solitary: true,
-            is_exclusive: true
-        })
+        this.listener.sequence_combo(keys, action)
     }
 }
 
@@ -703,7 +686,7 @@ let table = {
 
             idItem.setOnClick(idItemSelect.bind(idItem));
             idItem.setFill(idItemFill.bind(idItem));
-            idItem.setSimpleCombo('enter', idItem.onclick);
+            idItem.setSimpleCombo('enter', idItemSelect.bind(idItem));
             row.addItem(idItemField, idItem);
 
             Object.entries(row.items).forEach(([field, item]) => {

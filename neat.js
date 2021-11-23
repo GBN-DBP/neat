@@ -64,11 +64,19 @@ function setupInterface(data, file, urls) {
 
     let save_timeout = null;
 
-    let listener_defaults = { prevent_repeat  : true };
-
     let wnd_listener = new window.keypress.Listener();
-    let slider_pos = data.data.length - table.startIndex;
-    let slider_min = table.displayRows;
+
+    let displayRows = 15;
+    let startIndex = 0;
+    let previewBounds = {
+        minLeft: 1000000000,
+        maxRight: 0,
+        minTop: 1000000000,
+        maxBottom: 0
+    };
+
+    let slider_pos = data.data.length - startIndex;
+    let slider_min = displayRows;
     let slider_max = data.data.length;
 
     // private functions of app
@@ -264,8 +272,21 @@ function setupInterface(data, file, urls) {
                 $(target).data('tableInfo').clickAction(target);
             });
 
+        let previewRgn = $('#preview-rgn')[0];
+        let sliderRgn = $('#docpos')[0];
+        let keyboardRgn = $('.simple-keyboard')[0];
 
-        table.init(data, $('#preview-rgn')[0], $('#docpos')[0], $('.simple-keyboard')[0], urls, listener_defaults, notifyChange)
+        let table = new NERTable(
+            data.data,
+            startIndex,
+            displayRows,
+            previewBounds,
+            previewRgn,
+            sliderRgn,
+            keyboardRgn,
+            urls,
+            notifyChange
+        );
 
         table.element.append(document.createElement('br'));
         table.element.append(document.createElement('br'));

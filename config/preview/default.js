@@ -1,4 +1,4 @@
-function updatePreview(row, urls) {
+function updatePreview(row, urls, bounds) {
     if (urls == null) return;
 
     let img_url = urls[row['url_id']];
@@ -21,10 +21,10 @@ function updatePreview(row, urls) {
 
 
     top = Math.max(0, top - 25);
-    bottom = Math.min(table.maxBottom, bottom + 25);
+    bottom = Math.min(bounds.maxBottom, bottom + 25);
 
     left = Math.max(0, left - 50);
-    right = Math.min(table.maxRight, right + 50);
+    right = Math.min(bounds.maxRight, right + 50);
 
     width = right - left;
     height = bottom - top;
@@ -62,10 +62,10 @@ function updatePreview(row, urls) {
     img.src = img_url;
 
     top = Math.max(0, top - 200);
-    bottom = Math.min(table.maxBottom, bottom + 200);
+    bottom = Math.min(bounds.maxBottom, bottom + 200);
 
     left = Math.max(0, left - 400);
-    right = Math.min(table.maxRight, right + 400);
+    right = Math.min(bounds.maxRight, right + 400);
 
     width = right - left;
     height = bottom - top;
@@ -107,17 +107,17 @@ function updatePreview(row, urls) {
 
     full_img_url = urls[row['url_id']] + highlight;
 
-    width = table.maxRight - table.minLeft;
-    height = table.maxBottom - table.minTop;
+    width = bounds.maxRight - bounds.minLeft;
+    height = bounds.maxBottom - bounds.minTop;
 
     full_img_url = full_img_url.replace("left,top,width,height", "full")
     full_img_url = full_img_url.replace("left,right,top,bottom", "full")
     full_img_url = full_img_url.replace("left,top,right,bottom", "full")
 
-    full_img_url = full_img_url.replace(/left/g,  table.minLeft.toString());
-    full_img_url = full_img_url.replace(/right/g, table.maxRight.toString());
-    full_img_url = full_img_url.replace(/top/g,   table.minTop.toString());
-    full_img_url = full_img_url.replace(/bottom/g, table.maxBottom.toString());
+    full_img_url = full_img_url.replace(/left/g,  bounds.minLeft.toString());
+    full_img_url = full_img_url.replace(/right/g, bounds.maxRight.toString());
+    full_img_url = full_img_url.replace(/top/g,   bounds.minTop.toString());
+    full_img_url = full_img_url.replace(/bottom/g, bounds.maxBottom.toString());
     full_img_url = full_img_url.replace(/width/g, width.toString());
     full_img_url = full_img_url.replace(/height/g, height.toString());
 

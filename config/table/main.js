@@ -70,8 +70,9 @@ class TableItem {
         this.isEditable = !this.isEditable
     }
 
-    setFill(method) {
-        this.fill = method
+    fill() {
+        this.clear();
+        this.setText(this.data)
     }
 
     setText(text) {
@@ -120,11 +121,12 @@ class TableItem {
 }
 
 class TableRow {
-    constructor (data, nRow, prevRow) {
-        this.data = data;
+    constructor (parentTable, nRow, prevRow) {
+        this.parentTable = parentTable;
         this.nRow = nRow;
         this.prevRow = prevRow;
         this.nextRow = null;
+        this.data = this.parentTable.data[this.nRow];
 
         this.element = document.createElement('tr');
 
@@ -165,78 +167,58 @@ class TableBody {
     }
 }
 
-let table = {
-    displayRows: 15,
-    startIndex: 0,
-    endIndex: 15,
+class NERTable {
+    constructor (data, startIndex, displayRows, previewBounds, previewRgn, sliderRgn, keyboardRgn, urls, notifyChange) {
+        this.data = data;
+        this.displayRows = displayRows;
+        this.startIndex = startIndex;
+        this.endIndex = this.startIndex + this.displayRows;
+        this.previewBounds = previewBounds;
+        this.previewRgn = previewRgn;
+        this.sliderRgn = sliderRgn;
+        this.keyboardRgn = keyboardRgn;
+        this.urls = urls;
+        this.notifyChange = notifyChange;
 
-    minLeft: 1000000000,
-    maxRight: 0,
-    minTop: 1000000000,
-    maxBottom: 0,
+        this.fields = ['No.', 'TOKEN', 'NE-TAG', 'NE-EMB', 'ID'];
+        this.beingEdited = false;
+        this.finish = null;
 
-    fields: ['No.', 'TOKEN', 'NE-TAG', 'NE-EMB', 'ID'],
+        this.sanitize();
 
-    data: null,
-    previewRgn: null,
-    sliderRgn: null,
-    keyboardRgn: null,
-    urls: null,
-    listener_defaults: null,
-    notifyChange: null,
+        this.element = document.createElement('table');
+        this.element.id = "table";
 
-    beingEdited: false,
-    finish: null,
+        this.head = new TableHead(this.fields);
+        this.element.append(this.head.element);
 
-    head: null,
-    body: null,
+        this.head.addField("LOCATION");
+        this.fields.forEach((field) => this.head.addField(field));
 
-    element: null,
+        this.head.setPrevButton(() => this.stepsBackward(this.displayRows));
+        this.head.setNextButton(() => this.stepsForward(this.displayRows));
 
-    init: function (data, previewRgn, sliderRgn, keyboardRgn, urls, listener_defaults, notifyChange) {
-        table.data = data.data;
-        table.previewRgn = previewRgn;
-        table.sliderRgn = sliderRgn;
-        table.keyboardRgn = keyboardRgn;
-        table.urls = urls;
-        table.listener_defaults = listener_defaults;
-        table.notifyChange = notifyChange;
-
-        table.sanitize();
-
-        table.element = document.createElement('table');
-        table.element.id = "table";
-
-        table.head = new TableHead(table.fields);
-        table.element.append(table.head.element);
-
-        table.head.addField("LOCATION");
-        table.fields.forEach((field) => table.head.addField(field));
-
-        table.head.setPrevButton(() => table.stepsBackward(table.displayRows));
-        table.head.setNextButton(() => table.stepsForward(table.displayRows));
-
-        table.body = new TableBody();
-        table.element.append(table.body.element);
+        this.body = new TableBody();
+        this.element.append(this.body.element);
 
         let prevRow = null;
 
-        for (let nRow = table.startIndex; nRow < table.endIndex; ++nRow) {
-            let row = new TableRow(table.data[nRow], nRow, prevRow);
+        for (let nRow = this.startIndex; nRow < this.endIndex; ++nRow) {
+            let row = new TableRow(this, nRow, prevRow);
 
             if (prevRow != null) {
                 prevRow.nextRow = row;
             }
         
             row.setOnFocusIn(() => {
-                updatePreview(row.data, table.urls);
+                updatePreview(row.data, this.urls, this.previewBounds);
 
-                table.previewRgn.style.transform = 'translate(0,'
+                this.previewRgn.style.transform = 'translate(0,'
                     + (row.element.offsetTop + row.element.clientHeight/2) + 'px) translate(0%,-50%)'
             });
 
-            let rowSentenceAction = function () {
-                if (table.beingEdited) return;
+            let sentenceAction = function () {
+                if (this.parentTable.beingEdited) return;
 
                 let new_line = JSON.parse(JSON.stringify(this.data));
 
@@ -245,87 +227,67 @@ let table = {
                 new_line['NE-EMB'] = 'O';
                 new_line['ID'] = "";
 
-                table.data.splice(this.nRow, 0, new_line);
+                this.parentTable.data.splice(this.nRow, 0, new_line);
 
-                table.sanitize();
-                table.notifyChange();
-                table.update()
+                this.parentTable.sanitize();
+                this.parentTable.notifyChange();
+                this.parentTable.update()
             };
 
-            let rowSplitAction = function () {
-                if (table.beingEdited) return;
+            let splitAction = function () {
+                if (this.parentTable.beingEdited) return;
 
-                table.data.splice(nRow, 0, JSON.parse(JSON.stringify(this.data)));
+                this.parentTable.data.splice(this.nRow, 0, JSON.parse(JSON.stringify(this.data)));
 
-                table.sanitize();
-                table.notifyChange();
-                table.update()
+                this.parentTable.sanitize();
+                this.parentTable.notifyChange();
+                this.parentTable.update()
             };
 
-            let rowMergeAction = function () {
-                if (table.beingEdited) return;
+            let mergeAction = function () {
+                if (this.parentTable.beingEdited) return;
                 if (this.prevRow == null) return;
 
                 this.prevRow.data['TOKEN'] = this.prevRow.data['TOKEN'].toString() + this.data['TOKEN'].toString();
 
-                table.data.splice(this.nRow, 1);
+                this.parentTable.data.splice(this.nRow, 1);
 
-                table.sanitize();
-                table.notifyChange();
-                table.update()
+                this.parentTable.sanitize();
+                this.parentTable.notifyChange();
+                this.parentTable.update()
             };
 
-            let rowDeleteAction = function () {
-                if (table.beingEdited) return;
+            let deleteAction = function () {
+                if (this.parentTable.beingEdited) return;
 
-                table.data.splice(this.nRow, 1);
+                this.parentTable.data.splice(this.nRow, 1);
 
-                table.sanitize();
-                table.notifyChange();
-                table.update()
-            };
-
-            let rowActions = {
-                'sentence': rowSentenceAction,
-                'split': rowSplitAction,
-                'merge': rowMergeAction,
-                'delete': rowDeleteAction
-            };
-
-            let rowActionTexts = {
-                'sentence': '\u2607\u00a0sentence',
-                'split': '\u2195\u00a0split',
-                'merge': '\u27f3\u00a0merge',
-                'delete': '\u24e7\u00a0delete'
+                this.parentTable.sanitize();
+                this.parentTable.notifyChange();
+                this.parentTable.update()
             };
 
             let rowCombos = {
-                's t': rowSentenceAction,
-                's p': rowSplitAction,
-                'm e': rowMergeAction,
-                'd l': rowDeleteAction
+                's t': sentenceAction,
+                's p': splitAction,
+                'm e': mergeAction,
+                'd l': deleteAction
             };
 
             Object.entries(rowCombos).forEach(([combo, action]) => {
-                row.setSequenceCombo(combo, action.bind(row))
+                row.setSequenceCombo(combo, (evt) => {
+                    evt.stopPropagation();
+                    action.bind(row)()
+                })
             });
 
-            let locItemField = 'LOCATION';
-            let locItemData = nRow.toString();
-            let locItemFill = function () {
-                this.clear();
-                this.setText(this.data)
-            };
+            row.addItem('LOCATION', new TableItem(nRow.toString(), 'LOCATION', row, false));
 
-            let locItem = new TableItem(locItemData, locItemField, row, false);
+            let noItem = new TableItem(row.data['No.'], 'No.', row, true);
+            row.addItem('No.', noItem);
 
-            locItem.setFill(locItemFill.bind(locItem));
-            row.addItem(locItemField, locItem);
-
-            let noItemField = 'No.';
-            let noItemData = row.data[noItemField];
             let noItemSelect = function () {
-                if (table.beingEdited) return;
+                if (this.parentRow.parentTable.beingEdited) return;
 
                 this.clear();
                 this.setClass("hover");
@@ -334,6 +296,13 @@ let table = {
                 tokenizer.className = "accordion";
                 tokenizer.id = "tokenizer";
                 tokenizer.style = "display:block;";
+
+                let rowActionTexts = {
+                    'sentence': '\u2607\u00a0sentence',
+                    'split': '\u2195\u00a0split',
+                    'merge': '\u27f3\u00a0merge',
+                    'delete': '\u24e7\u00a0delete'
+                };
 
                 Object.entries(rowActionTexts).forEach(([id, text]) => {
                     let section = document.createElement('section');
@@ -346,13 +315,22 @@ let table = {
 
                 this.append(tokenizer);
 
-                table.finish = (isOk, evt = null) => {
+                let rowActions = {
+                    'sentence': sentenceAction,
+                    'split': splitAction,
+                    'merge': mergeAction,
+                    'delete': deleteAction
+                };
+
+                this.parentRow.parentTable.finish = (isOk, evt = null) => {
                     this.setClass("editable hover");
                     this.fill();
 
                     if (isOk) {
                         let action = evt.target.id;
-                        if (action in rowActions) rowActions[action].bind(this.parentRow)()
+                        if (action in rowActions) {
+                            rowActions[action].bind(this.parentRow)()
+                        }
                     }
 
                     this.focus()
@@ -361,29 +339,23 @@ let table = {
                 Array.from(tokenizer.childNodes).forEach((section) => {
                     section.onclick = (evt) => {
                         evt.stopPropagation();
-                        table.finish(true, evt)
+                        this.parentRow.parentTable.finish(true, evt)
                     };
                 });
 
-                tokenizer.onmouseleave = () => table.finish(false)
+                tokenizer.onmouseleave = () => this.parentRow.parentTable.finish(false)
             };
-            let noItemFill = function () {
-                this.clear();
-                this.setText(this.data)
-            };
-
-            let noItem = new TableItem(noItemData, noItemField, row, true);
 
             noItem.setOnClick(noItemSelect.bind(noItem));
-            noItem.setFill(noItemFill.bind(noItem));
-            row.addItem(noItemField, noItem);
 
-            let tokenItemField = 'TOKEN';
-            let tokenItemData = row.data[tokenItemField];
+            // TODO: Set background color depending on confidence value (if available)
+            let tokenItem = new TableItem(row.data['TOKEN'], 'TOKEN', row, true);
+            row.addItem('TOKEN', tokenItem);
+
             let tokenItemSelect = function () {
-                if (table.beingEdited) return;
+                if (this.parentRow.parentTable.beingEdited) return;
 
-                table.beingEdited = true;
+                this.parentRow.parentTable.beingEdited = true;
 
                 this.clear();
                 this.setClass("hover");
@@ -412,124 +384,140 @@ let table = {
 
                 this.append(buttons);
 
-                table.finish = (isOk) => {
+                this.parentRow.parentTable.finish = (isOk) => {
                     this.setClass("editable hover");
                     keyboard.listener.reset();
                     listener.reset();
 
                     if (isOk) {
                         let data = textArea.value;
-                        table.data[this.parentRow.nRow][this.field] = data
+                        this.parentRow.parentTable.data[this.parentRow.nRow][this.field] = data
                     }
 
-                    table.sanitize();
-                    table.notifyChange();
-                    table.update();
+                    this.parentRow.parentTable.sanitize();
+                    this.parentRow.parentTable.notifyChange();
+                    this.parentRow.parentTable.update();
 
-                    table.beingEdited = false;
+                    this.parentRow.parentTable.beingEdited = false;
 
                     keyboard.clear();
 
                     this.focus()
                 };
 
-                let keyboard = new Keyboard(table.keyboardRgn, textArea, table.finish);
+                let keyboard = new Keyboard(
+                    this.parentRow.parentTable.keyboardRgn,
+                    textArea,
+                    this.parentRow.parentTable.finish
+                );
 
                 let listener = new window.keypress.Listener(textArea, {prevent_repeat: true});
 
-                listener.simple_combo('enter', () => table.finish(true));
-                listener.simple_combo('esc', () => table.finish(false));
+                listener.simple_combo('enter', () => this.parentRow.parentTable.finish(true));
+                listener.simple_combo('esc', () => this.parentRow.parentTable.finish(false));
                 listener.simple_combo('ctrl', keyboard.toggleLayout.bind(keyboard));
 
                 ok_btn.onclick = (evt) => {
                     evt.stopPropagation();
-                    table.finish(true)
+                    this.parentRow.parentTable.finish(true)
                 };
                 cancel_btn.onclick = (evt) => {
                     evt.stopPropagation();
-                    table.finish(false)
+                    this.parentRow.parentTable.finish(false)
                 };
             };
-            let tokenItemFill = function () {
-                this.clear();
-                this.setText(this.data)
-            };
-
-            // TODO: Set background color depending on confidence value (if available)
-            let tokenItem = new TableItem(tokenItemData, tokenItemField, row, true);
 
             tokenItem.setOnClick(tokenItemSelect.bind(tokenItem));
-            tokenItem.setFill(tokenItemFill.bind(tokenItem));
             tokenItem.setSimpleCombo('enter', tokenItemSelect.bind(tokenItem));
-            row.addItem(tokenItemField, tokenItem);
-
-            let tags = [
-                'B-PER',
-                'B-LOC',
-                'B-ORG',
-                'B-WORK',
-                'B-CONF',
-                'B-EVT',
-                'B-TODO',
-                'I-PER',
-                'I-LOC',
-                'I-ORG',
-                'I-WORK',
-                'I-CONF',
-                'I-EVT',
-                'I-TODO'
-            ];
-
-            let bTagClasses = {
-                'B-PER': 'ner_per',
-                'B-LOC': 'ner_loc',
-                'B-ORG': 'ner_org',
-                'B-WORK': 'ner_work',
-                'B-CONF': 'ner_conf',
-                'B-EVT': 'ner_evt',
-                'B-TODO': 'ner_todo'
-            };
-
-            let iTagClasses = {
-                'I-PER': 'ner_per',
-                'I-LOC': 'ner_loc',
-                'I-ORG': 'ner_org',
-                'I-WORK': 'ner_work',
-                'I-CONF': 'ner_conf',
-                'I-EVT': 'ner_evt',
-                'I-TODO': 'ner_todo'
-            };
-
-            let tagCombos = {
-                'B-PER': 'b p',
-                'I-PER': 'i p',
-                'B-LOC': 'b l',
-                'I-LOC': 'i l',
-                'B-ORG': 'b o',
-                'I-ORG': 'i o',
-                'B-WORK': 'b w',
-                'I-WORK': 'i w',
-                'B-CONF': 'b c',
-                'I-CONF': 'i c',
-                'B-EVT': 'b e',
-                'I-EVT': 'i e',
-                'B-TODO': 'b t',
-                'I-TODO': 'i t'
-            };
 
             let tagAction = function (tag) {
-                table.data[this.parentRow.nRow][this.field] = tag;
-                table.sanitize();
-                table.notifyChange();
-                table.update()
+                this.parentRow.parentTable.data[this.parentRow.nRow][this.field] = tag;
+                this.parentRow.parentTable.sanitize();
+                this.parentRow.parentTable.notifyChange();
+                this.parentRow.parentTable.update()
             };
 
-            let neTagItemField = 'NE-TAG';
-            let neTagItemData = row.data[neTagItemField];
-            let neTagItemSelect = function () {
-                if (table.beingEdited) return;
+            let neTagItem = new TableItem(row.data['NE-TAG'], 'NE-TAG', row, true);
+            row.addItem('NE-TAG', neTagItem);
 
-                table.beingEdited = true;
+            let neTagItemFill = function () {
+                let bTagClasses = {
+                    'B-PER': 'ner_per',
+                    'B-LOC': 'ner_loc',
+                    'B-ORG': 'ner_org',
+                    'B-WORK': 'ner_work',
+                    'B-CONF': 'ner_conf',
+                    'B-EVT': 'ner_evt',
+                    'B-TODO': 'ner_todo'
+                };
+
+                let iTagClasses = {
+                    'I-PER': 'ner_per',
+                    'I-LOC': 'ner_loc',
+                    'I-ORG': 'ner_org',
+                    'I-WORK': 'ner_work',
+                    'I-CONF': 'ner_conf',
+                    'I-EVT': 'ner_evt',
+                    'I-TODO': 'ner_todo'
+                };
+
+                this.clear();
+                this.setText(this.data);
+
+                if (this.data.includes("B-")) {
+                    let myClass = bTagClasses[this.data];
+                    this.setClass(this.isEditable ? "editable hover " + myClass : "hover " + myClass)
+                }
+                else if (this.data.includes("I-")) {
+                    let myClass = iTagClasses[this.data]
+                    this.setClass(this.isEditable ? "editable hover " + myClass : "hover " + myClass)
+                }
+                else {
+                    this.setClass(this.isEditable ? "editable hover" : "hover")
+                }
+            };
+
+            let neTagItemSelect = function () {
+                if (this.parentRow.parentTable.beingEdited) return;
+
+                this.parentRow.parentTable.beingEdited = true;
+
+                let tags = [
+                    'B-PER',
+                    'B-LOC',
+                    'B-ORG',
+                    'B-WORK',
+                    'B-CONF',
+                    'B-EVT',
+                    'B-TODO',
+                    'I-PER',
+                    'I-LOC',
+                    'I-ORG',
+                    'I-WORK',
+                    'I-CONF',
+                    'I-EVT',
+                    'I-TODO'
+                ];
+
+                let bTagClasses = {
+                    'B-PER': 'ner_per',
+                    'B-LOC': 'ner_loc',
+                    'B-ORG': 'ner_org',
+                    'B-WORK': 'ner_work',
+                    'B-CONF': 'ner_conf',
+                    'B-EVT': 'ner_evt',
+                    'B-TODO': 'ner_todo'
+                };
+
+                let iTagClasses = {
+                    'I-PER': 'ner_per',
+                    'I-LOC': 'ner_loc',
+                    'I-ORG': 'ner_org',
+                    'I-WORK': 'ner_work',
+                    'I-CONF': 'ner_conf',
+                    'I-EVT': 'ner_evt',
+                    'I-TODO': 'ner_todo'
+                };
 
                 this.clear();
                 this.setClass("hover");
@@ -584,7 +572,7 @@ let table = {
 
                 this.append(tagger);
 
-                table.finish = (isOk, tag = null) => {
+                this.parentRow.parentTable.finish = (isOk, tag = null) => {
                     this.setClass("editable hover");
 
                     if (isOk && tags.includes(tag)) {
@@ -594,65 +582,64 @@ let table = {
                     this.fill();
                     this.focus();
 
-                    table.beingEdited = false
+                    this.parentRow.parentTable.beingEdited = false
                 };
 
-                o_section.onclick = (evt) => table.finish(true, 'O');
+                o_section.onclick = (evt) => this.parentRow.parentTable.finish(true, 'O');
 
                 Array.from(b_section_content.childNodes).forEach((elm) => {
-                    elm.onclick = (evt) => table.finish(true, evt.target.textContent.trim())
+                    elm.onclick = (evt) => this.parentRow.parentTable.finish(true, evt.target.textContent.trim())
                 });
 
                 Array.from(i_section_content.childNodes).forEach((elm) => {
-                    elm.onclick = (evt) => table.finish(true, evt.target.textContent.trim())
+                    elm.onclick = (evt) => this.parentRow.parentTable.finish(true, evt.target.textContent.trim())
                 });
 
-                tagger.onmouseleave = (() => table.finish(false))
-            };
-            let neTagItemFill = function () {
-                this.clear();
-                this.setText(this.data);
-                if (this.data.includes("B-")) {
-                    let myClass = bTagClasses[this.data];
-                    this.setClass(this.isEditable ? "editable hover " + myClass : "hover " + myClass)
-                }
-                else if (this.data.includes("I-")) {
-                    let myClass = iTagClasses[this.data]
-                    this.setClass(this.isEditable ? "editable hover " + myClass : "hover " + myClass)
-                }
-                else {
-                    this.setClass(this.isEditable ? "editable hover" : "hover")
-                }
+                tagger.onmouseleave = (() => this.parentRow.parentTable.finish(false))
             };
 
-            let neTagItem = new TableItem(neTagItemData, neTagItemField, row, true);
-
+            neTagItem.fill = neTagItemFill.bind(neTagItem);
             neTagItem.setOnClick(neTagItemSelect.bind(neTagItem));
-            neTagItem.setFill(neTagItemFill.bind(neTagItem));
+
+            let tagCombos = {
+                'B-PER': 'b p',
+                'I-PER': 'i p',
+                'B-LOC': 'b l',
+                'I-LOC': 'i l',
+                'B-ORG': 'b o',
+                'I-ORG': 'i o',
+                'B-WORK': 'b w',
+                'I-WORK': 'i w',
+                'B-CONF': 'b c',
+                'I-CONF': 'i c',
+                'B-EVT': 'b e',
+                'I-EVT': 'i e',
+                'B-TODO': 'b t',
+                'I-TODO': 'i t'
+            };
+
             Object.entries(tagCombos).forEach(([tag, combo]) => {
                 neTagItem.setSequenceCombo(combo, () => tagAction.bind(neTagItem)(tag))
             });
             neTagItem.setSimpleCombo('backspace', () => tagAction.bind(neTagItem)('O'));
-            row.addItem(neTagItemField, neTagItem);
 
-            let neEmbItemField = 'NE-EMB';
-            let neEmbItemData = row.data[neEmbItemField];
+            let neEmbItem = new TableItem(row.data['NE-EMB'], 'NE-EMB', row, true);
+            row.addItem('NE-EMB', neEmbItem);
+
             let neEmbItemSelect = neTagItemSelect;
             let neEmbItemFill = neTagItemFill;
 
-            let neEmbItem = new TableItem(neEmbItemData, neEmbItemField, row, true);
-
+            neEmbItem.fill = neEmbItemFill.bind(neEmbItem);
             neEmbItem.setOnClick(neEmbItemSelect.bind(neEmbItem));
-            neEmbItem.setFill(neEmbItemFill.bind(neEmbItem));
+
             Object.entries(tagCombos).forEach(([tag, combo]) => {
                 neEmbItem.setSequenceCombo(combo, () => tagAction.bind(neEmbItem)(tag))
             });
             neEmbItem.setSimpleCombo('backspace', () => tagAction.bind(neEmbItem)('O'));
-            row.addItem(neEmbItemField, neEmbItem);
 
-            let idItemField = 'ID';
-            let idItemData = row.data[idItemField];
-            let idItemSelect = tokenItemSelect;
+            let idItem = new TableItem(row.data['ID'], 'ID', row, true);
+            row.addItem('ID', idItem);
+
             let idItemFill = function () {
                 this.clear();
                 if (String(this.data).match(/^Q[0-9]+.*/g) == null) {
@@ -663,7 +650,7 @@ let table = {
 
                     let regex = /.*?(Q[0-9]+).*?/g;
                     for (let i = 0; i <= 2; ++i) {
-                        match = regex.exec(this.data);
+                        let match = regex.exec(this.data);
                         if (match === null) {
                             break
                         }
@@ -682,82 +669,75 @@ let table = {
                 }
             };
 
-            let idItem = new TableItem(idItemData, idItemField, row, true);
+            let idItemSelect = tokenItemSelect;
 
+            idItem.fill = idItemFill.bind(idItem);
             idItem.setOnClick(idItemSelect.bind(idItem));
-            idItem.setFill(idItemFill.bind(idItem));
             idItem.setSimpleCombo('enter', idItemSelect.bind(idItem));
-            row.addItem(idItemField, idItem);
 
             Object.entries(row.items).forEach(([field, item]) => {
                 item.setOnMouseOver((event) => {
-                    if (!table.beingEdited) {
+                    if (!this.beingEdited) {
                         event.target.focus()
                     }
                 });
                 item.fill()
             });
 
-            table.body.addRow(row);
+            this.body.addRow(row);
             prevRow = row
         }
 
-        if (table.sliderRgn.value != table.startIndex) {
-            table.sliderRgn.value = table.data.length - table.startIndex
+        if (this.sliderRgn.value != this.startIndex) {
+            this.sliderRgn.value = this.data.length - this.startIndex
         }
-    },
+    }
 
-    stepsBackward: function (nrows) {
-        if (table.beingEdited) return;
+    stepsBackward(nrows) {
+        if (this.beingEdited) return;
 
-        if (table.startIndex >= nrows) {
-            table.startIndex -= nrows;
-            table.endIndex -= nrows
-        }
-        else {
-            table.startIndex = 0;
-            table.endIndex = table.displayRows
-        }
-
-        table.update()
-    },
-
-    stepsForward: function (nrows) {
-        if (table.beingEdited) return;
-
-        if (table.endIndex + nrows < table.data.length) {
-            table.endIndex += nrows;
-            table.startIndex = table.endIndex - table.displayRows
+        if (this.startIndex >= nrows) {
+            this.startIndex -= nrows;
+            this.endIndex -= nrows
         }
         else {
-            table.endIndex = table.data.length;
-            table.startIndex = table.endIndex - table.displayRows
+            this.startIndex = 0;
+            this.endIndex = this.displayRows
         }
 
-        table.update()
-    },
+        this.update()
+    }
 
-    sanitize: function () {
-        function removeEol(row, col) {
-            row[col] = row[col].toString().replace(/(\r\n|\n|\r)/gm, "")
+    stepsForward(nrows) {
+        if (this.beingEdited) return;
+
+        if (this.endIndex + nrows < this.data.length) {
+            this.endIndex += nrows;
+            this.startIndex = this.endIndex - this.displayRows
+        }
+        else {
+            this.endIndex = this.data.length;
+            this.startIndex = this.endIndex - this.displayRows
         }
 
-        function updateBounds(row) {
-            table.minLeft =
-                (parseInt(row['left']) < table.minLeft) ? parseInt(row['left']) : table.minLeft;
-            table.maxRight =
-                (parseInt(row['right']) > table.maxRight) ? parseInt(row['right']) : table.maxRight;
+        this.update()
+    }
 
-            table.minTop =
-                (parseInt(row['top']) < table.minTop) ? parseInt(row['top']) : table.minTop;
-            table.maxBottom =
-                (parseInt(row['bottom']) > table.maxBottom) ? parseInt(row['bottom']) : table.maxBottom;
-        }
-
+    sanitize() {
         let word_pos = 1;
 
-        table.data.forEach((row) => {
-            updateBounds(row);
+        this.data.forEach((row) => {
+            this.previewBounds.minLeft = (parseInt(row['left']) < this.previewBounds.minLeft) ?
+                parseInt(row['left']) : this.previewBounds.minLeft;
+
+            this.previewBounds.maxRight = (parseInt(row['right']) > this.previewBounds.maxRight) ?
+                parseInt(row['right']) : this.previewBounds.maxRight;
+
+            this.previewBounds.minTop = (parseInt(row['top']) < this.previewBounds.minTop) ?
+                parseInt(row['top']) : this.previewBounds.minTop;
+
+            this.previewBounds.maxBottom = (parseInt(row['bottom']) > this.previewBounds.maxBottom) ?
+                parseInt(row['bottom']) : this.previewBounds.maxBottom;
 
             Object.keys(row).forEach((col) => {
                 if (row[col] == null) {
@@ -766,23 +746,23 @@ let table = {
                 if (row[col] === "") {
                     word_pos = 0
                 }
-                removeEol(row, col)
+                row[col] = row[col].toString().replace(/(\r\n|\n|\r)/gm, "")
             });
 
             row['No.'] = word_pos;
 
             word_pos++
         })
-    },
+    }
 
-    update: function () {
-        table.beingEdited = false;
+    update() {
+        this.beingEdited = false;
 
         let pRow = 0;
 
-        for (let nRow = table.startIndex; nRow < table.endIndex; ++nRow) {
-            let row = table.body.rows[pRow];
-            row.data = table.data[nRow];
+        for (let nRow = this.startIndex; nRow < this.endIndex; ++nRow) {
+            let row = this.body.rows[pRow];
+            row.data = this.data[nRow];
 
             Object.entries(row.items).forEach(([field, item]) => {
                 if (field === 'LOCATION') {
@@ -797,13 +777,13 @@ let table = {
             pRow++
         }
 
-        if (table.sliderRgn.value != table.startIndex) {
-            table.sliderRgn.value = table.data.length - table.startIndex
+        if (this.sliderRgn.value != this.startIndex) {
+            this.sliderRgn.value = this.data.length - this.startIndex
         }
 
-        table.body.rows.forEach((row) => {
+        this.body.rows.forEach((row) => {
             if (row.hasFocusIn()) {
-                updatePreview(row.data, table.urls)
+                updatePreview(row.data, this.urls, this.previewBounds)
             }
         })
     }

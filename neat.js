@@ -276,7 +276,7 @@ function setupInterface(data, file, urls) {
         let sliderRgn = $('#docpos')[0];
         let keyboardRgn = $('.simple-keyboard')[0];
 
-        let table = new NERTable(
+        let table = new OCRTable(
             data.data,
             startIndex,
             displayRows,

@@ -75,6 +75,8 @@ function setupInterface(data, file, urls) {
         maxBottom: 0
     };
 
+    let table;
+
     let slider_pos = data.data.length - startIndex;
     let slider_min = displayRows;
     let slider_max = data.data.length;
@@ -276,7 +278,7 @@ function setupInterface(data, file, urls) {
         let sliderRgn = $('#docpos')[0];
         let keyboardRgn = $('.simple-keyboard')[0];
 
-        let table = new OCRTable(
+        table = new OCRTable(
             data.data,
             startIndex,
             displayRows,

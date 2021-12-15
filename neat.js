@@ -278,7 +278,7 @@ function setupInterface(data, file, urls) {
         let sliderRgn = $('#docpos')[0];
         let keyboardRgn = $('.simple-keyboard')[0];
 
-        table = new OCRTable(
+        table = new FontsTable(
             data.data,
             startIndex,
             displayRows,

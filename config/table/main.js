@@ -58,6 +58,12 @@ class TableItem {
         this.parentRow = parentRow;
         this.isEditable = isEditable;
 
+        this.fontFamily = "AletheiaSans";
+        this.fontSize = 12;
+        this.bold = false;
+        this.italic = false;
+        this.letterspaced = false;
+
         this.element = document.createElement('td');
         this.element.className = this.isEditable ? "editable hover" : "hover";
         this.element.innerText = this.data;
@@ -66,13 +72,61 @@ class TableItem {
         this.listener = new window.keypress.Listener(this.element, { prevent_repeat: true })
     }
 
+    setFontFamily(family) {
+        this.fontFamily = family
+    }
+
+    setFontSize(size) {
+        this.fontSize = size
+    }
+
+    toggleBold() {
+        this.bold = !this.bold
+    }
+
+    toggleItalic() {
+        this.italic = !this.italic
+    }
+
+    toggleLetterspaced() {
+        this.letterspaced = !this.letterspaced
+    }
+
     toggleEditable() {
         this.isEditable = !this.isEditable
     }
 
     fill() {
         this.clear();
-        this.setText(this.data)
+
+        let elm = this.element;
+
+        if (this.bold) {
+            let bold = document.createElement('b');
+            elm.append(bold);
+            elm = bold
+        }
+
+        if (this.italic) {
+            let italic = document.createElement('i');
+            elm.append(italic);
+            elm = italic
+        }
+
+        if (this.letterspaced) {
+            let letterspaced = document.createElement('span');
+            letterspaced.style = "letter-spacing:0.3em;font-family:" + this.fontFamily + ";font-size:" + this.fontSize.toString() + "pt";
+            elm.append(letterspaced);
+            elm = letterspaced
+        }
+        else {
+            elm.style = "font-family:" + this.fontFamily + ";font-size:" + this.fontSize.toString() + "pt"
+        }
+
+        // this.setStyle("font-family:" + this.fontFamily + ";font-size:" + this.fontSize.toString() + "pt");
+        // this.setText(this.data)
+
+        elm.innerText = this.data
     }
 
     setText(text) {
@@ -81,6 +135,10 @@ class TableItem {
 
     setHTML(html) {
         this.element.innerHTML = html
+    }
+
+    setStyle(style) {
+        this.element.style = style
     }
 
     setClass(className) {
@@ -142,6 +200,10 @@ class TableRow {
 
     setOnFocusIn(callback) {
         this.element.onfocusin = callback
+    }
+
+    setOnFocusOut(callback) {
+        this.element.onfocusout = callback
     }
 
     hasFocusIn() {
@@ -1081,10 +1143,25 @@ class FontsTable {
             }
         
             row.setOnFocusIn(() => {
+                // TODO: better way of doing this
+                if (!this.beingEdited && row.data['FONT-SIZE'] !== "") {
+                    let scale_factor = 2.0;
+                    let font_size = parseFloat(row.data['FONT-SIZE']) * scale_factor;
+                    row.items['TOKEN'].setFontSize(font_size);
+                    row.items['TOKEN'].fill()
+                }
+
                 updatePreview(row.data, this.urls, this.previewBounds);
 
                 this.previewRgn.style.transform = 'translate(0,'
                     + (row.element.offsetTop + row.element.clientHeight/2) + 'px) translate(0%,-50%)'
+            });
+
+            row.setOnFocusOut(() => {
+                if (!this.beingEdited) {
+                    row.items['TOKEN'].setFontSize(15);
+                    row.items['TOKEN'].fill()
+                }
             });
 
             row.addItem('LOCATION', new TableItem(nRow.toString(), 'LOCATION', row, false));
@@ -1093,40 +1170,25 @@ class FontsTable {
             let tokenItem = new TableItem(row.data['TOKEN'], 'TOKEN', row, true);
             row.addItem('TOKEN', tokenItem);
 
-            let tokenItemFill = function () {
-                this.clear();
+            if (row.data['FONT-FAMILY'] === 'Fraktur') {
+                tokenItem.fontFamily = "UnifrakturMaguntia";
+                tokenItem.fontSize = 15
+            }
+            else {
+                tokenItem.fontFamily = "AletheiaSans";
+                tokenItem.fontSize = 12
+            }
 
-                let elm = this.element;
+            if (row.data['BOLD'] == 'True') {
+                tokenItem.bold = true
+            }
 
-                // elm.style = "font-family:UnifrakturMaguntia";
-                elm.style = "font-family:UnifrakturMaguntia;font-size:20pt";
+            if (row.data['ITALIC'] == 'True') {
+                tokenItem.italic = true
+            }
 
-                // if (this.parentRow.data['FONT-SIZE'] !== "") {
-                //     let scale_factor = 1.5;
-                //     let font_size = parseFloat(this.parentRow.data['FONT-SIZE']) * scale_factor;
-                //     elm.style = "font-family:UnifrakturMaguntia;font-size:" + font_size.toString() + "pt"
-                // }
-
-                if (this.parentRow.data['BOLD'] === 'True') {
-                    let bold = document.createElement('b');
-                    elm.append(bold);
-                    elm = bold
-                }
-
-                if (this.parentRow.data['ITALIC'] === 'True') {
-                    let italic = document.createElement('i');
-                    elm.append(italic);
-                    elm = italic
-                }
-
-                if (this.parentRow.data['LETTERSPACED'] === 'True') {
-                    let letterspaced = document.createElement('span');
-                    letterspaced.style = "letter-spacing:0.3em";
-                    elm.append(letterspaced);
-                    elm = letterspaced
-                }
-
-                elm.textContent = this.data
+            if (row.data['LETTERSPACED'] == 'True') {
+                tokenItem.letterspaced = true
             }
 
             let tokenItemSelect = function () {
@@ -1204,7 +1266,6 @@ class FontsTable {
                 };
             };
 
-            tokenItem.fill = tokenItemFill;
             tokenItem.setOnClick(tokenItemSelect.bind(tokenItem));
             tokenItem.setSimpleCombo('enter', tokenItemSelect.bind(tokenItem));
 
@@ -1410,52 +1471,18 @@ class FontsTable {
             let boldItemSelect = function () {
                 if (this.parentRow.parentTable.beingEdited) return;
 
-                this.clear();
-                this.setClass("hover");
+                this.parentRow.items['TOKEN'].toggleBold();
+                if (this.parentRow.items['TOKEN'].bold) {
+                    this.parentRow.parentTable.data[this.parentRow.nRow]['BOLD'] = 'True'
+                } else {
+                    this.parentRow.parentTable.data[this.parentRow.nRow]['BOLD'] = 'False'
+                }
 
-                let tagger = document.createElement('div');
-                tagger.className = "accordion";
-                tagger.style = "display:block;";
-
-                let tags = [
-                    'True',
-                    'False'
-                ];
-
-                tags.forEach((tag) => {
-                    let section = document.createElement('section');
-                    section.className = "accordion-item type_select";
-                    section.textContent = tag;
-
-                    tagger.append(section)
-                });
-
-                this.append(tagger);
-
-                this.parentRow.parentTable.finish = (isOk, tag = null) => {
-                    this.setClass("editable hover");
-
-                    if (isOk && tags.includes(tag)) {
-                        tagAction.bind(this)(tag)
-                    }
-
-                    this.fill();
-                    this.focus();
-
-                    this.parentRow.parentTable.beingEdited = false
-                };
-
-                Array.from(tagger.childNodes).forEach((section) => {
-                    section.onclick = (evt) => {
-                        evt.stopPropagation();
-                        this.parentRow.parentTable.finish(true, section.textContent, evt)
-                    };
-                });
-
-                tagger.onmouseleave = () => this.parentRow.parentTable.finish(false)
+                this.parentRow.parentTable.update()
             };
 
             boldItem.setOnClick(boldItemSelect.bind(boldItem));
+            boldItem.setSimpleCombo('enter', boldItemSelect.bind(boldItem));
 
             let italicItem = new TableItem(row.data['ITALIC'], 'ITALIC', row, true);
             row.addItem('ITALIC', italicItem);
@@ -1463,52 +1490,18 @@ class FontsTable {
             let italicItemSelect = function () {
                 if (this.parentRow.parentTable.beingEdited) return;
 
-                this.clear();
-                this.setClass("hover");
+                this.parentRow.items['TOKEN'].toggleItalic();
+                if (this.parentRow.items['TOKEN'].italic) {
+                    this.parentRow.parentTable.data[this.parentRow.nRow]['ITALIC'] = 'True'
+                } else {
+                    this.parentRow.parentTable.data[this.parentRow.nRow]['ITALIC'] = 'False'
+                }
 
-                let tagger = document.createElement('div');
-                tagger.className = "accordion";
-                tagger.style = "display:block;";
-
-                let tags = [
-                    'True',
-                    'False'
-                ];
-
-                tags.forEach((tag) => {
-                    let section = document.createElement('section');
-                    section.className = "accordion-item type_select";
-                    section.textContent = tag;
-
-                    tagger.append(section)
-                });
-
-                this.append(tagger);
-
-                this.parentRow.parentTable.finish = (isOk, tag = null) => {
-                    this.setClass("editable hover");
-
-                    if (isOk && tags.includes(tag)) {
-                        tagAction.bind(this)(tag)
-                    }
-
-                    this.fill();
-                    this.focus();
-
-                    this.parentRow.parentTable.beingEdited = false
-                };
-
-                Array.from(tagger.childNodes).forEach((section) => {
-                    section.onclick = (evt) => {
-                        evt.stopPropagation();
-                        this.parentRow.parentTable.finish(true, section.textContent, evt)
-                    };
-                });
-
-                tagger.onmouseleave = () => this.parentRow.parentTable.finish(false)
+                this.parentRow.parentTable.update()
             };
 
             italicItem.setOnClick(italicItemSelect.bind(italicItem));
+            italicItem.setSimpleCombo('enter', italicItemSelect.bind(italicItem));
 
             let letterspacedItem = new TableItem(row.data['LETTERSPACED'], 'LETTERSPACED', row, true);
             row.addItem('LETTERSPACED', letterspacedItem);
@@ -1516,52 +1509,18 @@ class FontsTable {
             let letterspacedItemSelect = function () {
                 if (this.parentRow.parentTable.beingEdited) return;
 
-                this.clear();
-                this.setClass("hover");
+                this.parentRow.items['TOKEN'].toggleLetterspaced();
+                if (this.parentRow.items['TOKEN'].letterspaced) {
+                    this.parentRow.parentTable.data[this.parentRow.nRow]['LETTERSPACED'] = 'True'
+                } else {
+                    this.parentRow.parentTable.data[this.parentRow.nRow]['LETTERSPACED'] = 'False'
+                }
 
-                let tagger = document.createElement('div');
-                tagger.className = "accordion";
-                tagger.style = "display:block;";
-
-                let tags = [
-                    'True',
-                    'False'
-                ];
-
-                tags.forEach((tag) => {
-                    let section = document.createElement('section');
-                    section.className = "accordion-item type_select";
-                    section.textContent = tag;
-
-                    tagger.append(section)
-                });
-
-                this.append(tagger);
-
-                this.parentRow.parentTable.finish = (isOk, tag = null) => {
-                    this.setClass("editable hover");
-
-                    if (isOk && tags.includes(tag)) {
-                        tagAction.bind(this)(tag)
-                    }
-
-                    this.fill();
-                    this.focus();
-
-                    this.parentRow.parentTable.beingEdited = false
-                };
-
-                Array.from(tagger.childNodes).forEach((section) => {
-                    section.onclick = (evt) => {
-                        evt.stopPropagation();
-                        this.parentRow.parentTable.finish(true, section.textContent, evt)
-                    };
-                });
-
-                tagger.onmouseleave = () => this.parentRow.parentTable.finish(false)
+                this.parentRow.parentTable.update()
             };
 
             letterspacedItem.setOnClick(letterspacedItemSelect.bind(letterspacedItem));
+            letterspacedItem.setSimpleCombo('enter', letterspacedItemSelect.bind(letterspacedItem));
 
             Object.entries(row.items).forEach(([field, item]) => {
                 item.setOnMouseOver((event) => {

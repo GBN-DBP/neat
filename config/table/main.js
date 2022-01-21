@@ -430,8 +430,11 @@ class FontsTable {
                 let textArea = document.createElement('textarea');
                 textArea.style.width = this.element.clientWidth + "px";
                 textArea.style.height = this.element.clientHeight + "px";
-                textArea.style.fontFamily = "AletheiaSans";
-                textArea.style.fontSize = "12pt";
+                if (this.letterspaced) {
+                    textArea.style.letterSpacing = "0.3em"
+                }
+                textArea.style.fontFamily = this.fontFamily;
+                textArea.style.fontSize = this.fontSize + "pt";
                 textArea.className = "input";
                 textArea.value = this.data;
 

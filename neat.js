@@ -287,7 +287,8 @@ function setupInterface(data, file, urls) {
             sliderRgn,
             keyboardRgn,
             urls,
-            notifyChange
+            notifyChange,
+            wnd_listener
         );
 
         table.element.append(document.createElement('br'));

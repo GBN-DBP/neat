@@ -152,7 +152,7 @@ class TableItem {
         this.parentRow = parentRow;
         this.isEditable = isEditable;
 
-        this.fontFamily = "AletheiaSans";
+        this.fontFamily = "sans-serif";
         this.fontSize = 12;
         this.bold = false;
         this.italic = false;
@@ -332,7 +332,7 @@ class TableBody {
 }
 
 class FontsTable {
-    constructor (data, startIndex, displayRows, previewBounds, previewRgn, sliderRgn, keyboardRgn, urls, notifyChange) {
+    constructor (data, startIndex, displayRows, previewBounds, previewRgn, sliderRgn, keyboardRgn, urls, notifyChange, wndListener) {
         this.data = data;
         this.displayRows = displayRows;
         this.startIndex = startIndex;
@@ -343,8 +343,10 @@ class FontsTable {
         this.keyboardRgn = keyboardRgn;
         this.urls = urls;
         this.notifyChange = notifyChange;
+        this.wndListener = wndListener;
 
-        this.fields = ['TOKEN', 'LANG', 'FONT-FAMILY', 'BOLD', 'ITALIC', 'LETTERSPACED'];
+        // this.fields = ['TOKEN', 'LANG', 'FONT-FAMILY', 'BOLD', 'ITALIC', 'LETTERSPACED'];
+        this.fields = ['TOKEN', 'LANG', 'FONT-FAMILY'];
         this.beingEdited = false;
         this.finish = null;
 
@@ -358,7 +360,7 @@ class FontsTable {
 
         this.fields.forEach((field) => this.head.addField(field));
 
-        // this.head.setWidth('TOKEN', 20);
+        this.head.setWidth('TOKEN', 40);
 
         this.head.setPrevButton(() => this.stepsBackward(this.displayRows));
         this.head.setNextButton(() => this.stepsForward(this.displayRows));
@@ -376,10 +378,10 @@ class FontsTable {
             }
         
             row.setOnFocusIn(() => {
-                // if (!this.beingEdited) {
-                //     row.items['TOKEN'].setFontSize(30);
-                //     row.items['TOKEN'].fill()
-                // }
+                if (!this.beingEdited) {
+                    row.items['TOKEN'].setFontSize(25);
+                    row.items['TOKEN'].fill()
+                }
 
                 updatePreview(row.data, this.urls, this.previewBounds);
 
@@ -387,33 +389,27 @@ class FontsTable {
                     + (row.element.offsetTop + row.element.clientHeight/2) + 'px) translate(0%,-50%)'
             });
 
-            // row.setOnFocusOut(() => {
-            //     if (!this.beingEdited) {
-            //         row.items['TOKEN'].setFontSize(15);
-            //         row.items['TOKEN'].fill()
-            //     }
-            // });
+            row.setOnFocusOut(() => {
+                if (!this.beingEdited) {
+                    row.items['TOKEN'].setFontSize(15);
+                    row.items['TOKEN'].fill()
+                }
+            });
 
             // TODO: Set background color depending on confidence value (if available)
             let tokenItem = new TableItem(row.data['TOKEN'], 'TOKEN', row, true);
             row.addItem('TOKEN', tokenItem);
 
-            if (row.data['FONT-FAMILY'] === 'Fraktur') {
-                tokenItem.fontFamily = "UnifrakturMaguntia";
-            }
-            else {
-                tokenItem.fontFamily = "AletheiaSans";
-            }
-
+            tokenItem.fontFamily = row.data['FONT-FAMILY'];
             tokenItem.fontSize = 15;
 
-            if (row.data['BOLD'] == 'True') {
-                tokenItem.bold = true
-            }
+            // if (row.data['BOLD'] == 'True') {
+            //     tokenItem.bold = true
+            // }
 
-            if (row.data['ITALIC'] == 'True') {
-                tokenItem.italic = true
-            }
+            // if (row.data['ITALIC'] == 'True') {
+            //     tokenItem.italic = true
+            // }
 
             if (row.data['LETTERSPACED'] == 'True') {
                 tokenItem.letterspaced = true
@@ -424,18 +420,23 @@ class FontsTable {
 
                 this.parentRow.parentTable.beingEdited = true;
 
+                this.parentRow.listener.stop_listening();
+                this.parentRow.parentTable.wndListener.stop_listening();
+
                 this.clear();
                 this.setClass("hover");
 
                 let textArea = document.createElement('textarea');
                 textArea.style.width = this.element.clientWidth + "px";
-                textArea.style.height = this.element.clientHeight + "px";
+                // textArea.style.height = this.element.clientHeight + "px";
+                textArea.style.height = this.fontSize + "pt";
                 if (this.letterspaced) {
                     textArea.style.letterSpacing = "0.3em"
                 }
                 textArea.style.fontFamily = this.fontFamily;
                 textArea.style.fontSize = this.fontSize + "pt";
                 textArea.className = "input";
+                textArea.tabIndex = "0";
                 textArea.value = this.data;
 
                 this.append(textArea);
@@ -444,14 +445,14 @@ class FontsTable {
                 let buttons = document.createElement('div');
 
                 let ok_btn = document.createElement('button');
-                ok_btn.style.fontFamily = "AletheiaSans";
+                ok_btn.style.fontFamily = "sans-serif";
                 ok_btn.className = "btn btn-secondary btn-sm";
                 ok_btn.innerText = "OK";
                 buttons.append(ok_btn);
                 buttons.append(" ");
 
                 let cancel_btn = document.createElement('button');
-                cancel_btn.style.fontFamily = "AletheiaSans";
+                cancel_btn.style.fontFamily = "sans-serif";
                 cancel_btn.className = "btn btn-secondary btn-sm";
                 cancel_btn.innerText = "CANCEL";
                 buttons.append(cancel_btn);
@@ -476,7 +477,10 @@ class FontsTable {
                     this.parentRow.parentTable.beingEdited = false;
 
                     this.fill();
-                    this.focus()
+                    this.focus();
+
+                    this.parentRow.listener.listen();
+                    this.parentRow.parentTable.wndListener.listen()
                 };
 
                 let keyboard = new Keyboard(
@@ -489,7 +493,7 @@ class FontsTable {
 
                 listener.simple_combo('enter', () => this.parentRow.parentTable.finish(true));
                 listener.simple_combo('esc', () => this.parentRow.parentTable.finish(false));
-                listener.simple_combo('ctrl', keyboard.toggleLayout.bind(keyboard));
+                // listener.simple_combo('ctrl', keyboard.toggleLayout.bind(keyboard));
 
                 ok_btn.onclick = (evt) => {
                     evt.stopPropagation();
@@ -563,7 +567,7 @@ class FontsTable {
             let familyItem = new TableItem(row.data['FONT-FAMILY'], 'FONT-FAMILY', row, true);
             row.addItem('FONT-FAMILY', familyItem);
 
-            familyItem.tagger = new Tagger(['Antiqua', 'Script', 'Gothic', 'Fraktur', 'Fraktur-Variant']);
+            familyItem.tagger = new Tagger(['Antiqua', 'Italic', 'Script', 'Textura', 'Fraktur', 'Kanzlei']);
 
             let familyItemSelect = function () {
                 if (this.parentRow.parentTable.beingEdited) return;
@@ -616,113 +620,113 @@ class FontsTable {
             );
             familyItem.setSimpleCombo('escape', () => this.finish(false));
 
-            let boldItem = new TableItem(row.data['BOLD'], 'BOLD', row, true);
-            row.addItem('BOLD', boldItem);
+            // let boldItem = new TableItem(row.data['BOLD'], 'BOLD', row, true);
+            // row.addItem('BOLD', boldItem);
 
-            let boldItemFill = function () {
-                this.clear();
+            // let boldItemFill = function () {
+            //     this.clear();
 
-                this.box = document.createElement('input');
-                this.box.type = "checkbox";
-                this.element.append(this.box);
+            //     this.box = document.createElement('input');
+            //     this.box.type = "checkbox";
+            //     this.element.append(this.box);
 
-                if (this.parentRow.parentTable.data[this.parentRow.nRow]['BOLD'] == 'True') {
-                    this.box.checked = true
-                } else {
-                    this.box.checked = false
-                }
+            //     if (this.parentRow.parentTable.data[this.parentRow.nRow]['BOLD'] == 'True') {
+            //         this.box.checked = true
+            //     } else {
+            //         this.box.checked = false
+            //     }
 
-                this.box.onclick = (evt) => {
-                    evt.stopPropagation();
+            //     this.box.onclick = (evt) => {
+            //         evt.stopPropagation();
 
-                    if (this.box.checked) {
-                        this.parentRow.parentTable.data[this.parentRow.nRow]['BOLD'] = 'True';
-                        this.parentRow.items['TOKEN'].bold = true
-                    }
-                    else {
-                        this.parentRow.parentTable.data[this.parentRow.nRow]['BOLD'] = 'False';
-                        this.parentRow.items['TOKEN'].bold = false
-                    }
+            //         if (this.box.checked) {
+            //             this.parentRow.parentTable.data[this.parentRow.nRow]['BOLD'] = 'True';
+            //             this.parentRow.items['TOKEN'].bold = true
+            //         }
+            //         else {
+            //             this.parentRow.parentTable.data[this.parentRow.nRow]['BOLD'] = 'False';
+            //             this.parentRow.items['TOKEN'].bold = false
+            //         }
 
-                    this.parentRow.parentTable.update()
-                }
-            }
+            //         this.parentRow.parentTable.update()
+            //     }
+            // }
 
-            boldItem.fill = boldItemFill
-            boldItem.setOnClick(() => boldItem.box.click());
-            boldItem.setSimpleCombo('enter', () => boldItem.box.click());
+            // boldItem.fill = boldItemFill
+            // boldItem.setOnClick(() => boldItem.box.click());
+            // boldItem.setSimpleCombo('enter', () => boldItem.box.click());
 
-            let italicItem = new TableItem(row.data['ITALIC'], 'ITALIC', row, true);
-            row.addItem('ITALIC', italicItem);
+            // let italicItem = new TableItem(row.data['ITALIC'], 'ITALIC', row, true);
+            // row.addItem('ITALIC', italicItem);
 
-            let italicItemFill = function () {
-                this.clear();
+            // let italicItemFill = function () {
+            //     this.clear();
 
-                this.box = document.createElement('input');
-                this.box.type = "checkbox";
-                this.element.append(this.box);
+            //     this.box = document.createElement('input');
+            //     this.box.type = "checkbox";
+            //     this.element.append(this.box);
 
-                if (this.parentRow.parentTable.data[this.parentRow.nRow]['ITALIC'] == 'True') {
-                    this.box.checked = true
-                } else {
-                    this.box.checked = false
-                }
+            //     if (this.parentRow.parentTable.data[this.parentRow.nRow]['ITALIC'] == 'True') {
+            //         this.box.checked = true
+            //     } else {
+            //         this.box.checked = false
+            //     }
 
-                this.box.onclick = (evt) => {
-                    evt.stopPropagation();
+            //     this.box.onclick = (evt) => {
+            //         evt.stopPropagation();
 
-                    if (this.box.checked) {
-                        this.parentRow.parentTable.data[this.parentRow.nRow]['ITALIC'] = 'True';
-                        this.parentRow.items['TOKEN'].italic = true
-                    }
-                    else {
-                        this.parentRow.parentTable.data[this.parentRow.nRow]['ITALIC'] = 'False';
-                        this.parentRow.items['TOKEN'].italic = false
-                    }
+            //         if (this.box.checked) {
+            //             this.parentRow.parentTable.data[this.parentRow.nRow]['ITALIC'] = 'True';
+            //             this.parentRow.items['TOKEN'].italic = true
+            //         }
+            //         else {
+            //             this.parentRow.parentTable.data[this.parentRow.nRow]['ITALIC'] = 'False';
+            //             this.parentRow.items['TOKEN'].italic = false
+            //         }
 
-                    this.parentRow.parentTable.update()
-                }
-            }
+            //         this.parentRow.parentTable.update()
+            //     }
+            // }
 
-            italicItem.fill = italicItemFill;
-            italicItem.setOnClick(() => italicItem.box.click());
-            italicItem.setSimpleCombo('enter', () => italicItem.box.click());
+            // italicItem.fill = italicItemFill;
+            // italicItem.setOnClick(() => italicItem.box.click());
+            // italicItem.setSimpleCombo('enter', () => italicItem.box.click());
 
-            let letterspacedItem = new TableItem(row.data['LETTERSPACED'], 'LETTERSPACED', row, true);
-            row.addItem('LETTERSPACED', letterspacedItem);
+            // let letterspacedItem = new TableItem(row.data['LETTERSPACED'], 'LETTERSPACED', row, true);
+            // row.addItem('LETTERSPACED', letterspacedItem);
 
-            let letterspacedItemFill = function () {
-                this.clear();
+            // let letterspacedItemFill = function () {
+            //     this.clear();
 
-                this.box = document.createElement('input');
-                this.box.type = "checkbox";
-                this.element.append(this.box);
+            //     this.box = document.createElement('input');
+            //     this.box.type = "checkbox";
+            //     this.element.append(this.box);
 
-                if (this.parentRow.parentTable.data[this.parentRow.nRow]['LETTERSPACED'] == 'True') {
-                    this.box.checked = true
-                } else {
-                    this.box.checked = false
-                }
+            //     if (this.parentRow.parentTable.data[this.parentRow.nRow]['LETTERSPACED'] == 'True') {
+            //         this.box.checked = true
+            //     } else {
+            //         this.box.checked = false
+            //     }
 
-                this.box.onclick = (evt) => {
-                    evt.stopPropagation();
+            //     this.box.onclick = (evt) => {
+            //         evt.stopPropagation();
 
-                    if (this.box.checked) {
-                        this.parentRow.parentTable.data[this.parentRow.nRow]['LETTERSPACED'] = 'True';
-                        this.parentRow.items['TOKEN'].letterspaced = true
-                    }
-                    else {
-                        this.parentRow.parentTable.data[this.parentRow.nRow]['LETTERSPACED'] = 'False';
-                        this.parentRow.items['TOKEN'].letterspaced = false
-                    }
+            //         if (this.box.checked) {
+            //             this.parentRow.parentTable.data[this.parentRow.nRow]['LETTERSPACED'] = 'True';
+            //             this.parentRow.items['TOKEN'].letterspaced = true
+            //         }
+            //         else {
+            //             this.parentRow.parentTable.data[this.parentRow.nRow]['LETTERSPACED'] = 'False';
+            //             this.parentRow.items['TOKEN'].letterspaced = false
+            //         }
 
-                    this.parentRow.parentTable.update()
-                }
-            }
+            //         this.parentRow.parentTable.update()
+            //     }
+            // }
 
-            letterspacedItem.fill = letterspacedItemFill
-            letterspacedItem.setOnClick(() => letterspacedItem.box.click());
-            letterspacedItem.setSimpleCombo('enter', () => letterspacedItem.box.click());
+            // letterspacedItem.fill = letterspacedItemFill
+            // letterspacedItem.setOnClick(() => letterspacedItem.box.click());
+            // letterspacedItem.setSimpleCombo('enter', () => letterspacedItem.box.click());
 
             Object.entries(row.items).forEach(([field, item]) => {
                 item.setOnMouseOver((event) => {
@@ -771,6 +775,15 @@ class FontsTable {
                 }
             );
             row.setSequenceCombo(
+                'f i',
+                () => {
+                    this.data[row.nRow]['FONT-FAMILY'] = 'Italic';
+                    this.sanitize();
+                    this.notifyChange();
+                    this.update()
+                }
+            );
+            row.setSequenceCombo(
                 'f s',
                 () => {
                     this.data[row.nRow]['FONT-FAMILY'] = 'Script';
@@ -780,9 +793,9 @@ class FontsTable {
                 }
             );
             row.setSequenceCombo(
-                'f g',
+                'f t',
                 () => {
-                    this.data[row.nRow]['FONT-FAMILY'] = 'Gothic';
+                    this.data[row.nRow]['FONT-FAMILY'] = 'Textura';
                     this.sanitize();
                     this.notifyChange();
                     this.update()
@@ -798,44 +811,44 @@ class FontsTable {
                 }
             );
             row.setSequenceCombo(
-                'f v',
+                'f k',
                 () => {
-                    this.data[row.nRow]['FONT-FAMILY'] = 'Fraktur-Variant';
+                    this.data[row.nRow]['FONT-FAMILY'] = 'Kanzlei';
                     this.sanitize();
                     this.notifyChange();
                     this.update()
                 }
             );
 
-            row.setSequenceCombo(
-                'b l',
-                () => {
-                    this.data[row.nRow]['BOLD'] = this.data[row.nRow]['BOLD'] === 'True' ? 'False' : 'True';
-                    this.sanitize();
-                    this.notifyChange();
-                    this.update()
-                }
-            );
+            // row.setSequenceCombo(
+            //     'b l',
+            //     () => {
+            //         this.data[row.nRow]['BOLD'] = this.data[row.nRow]['BOLD'] === 'True' ? 'False' : 'True';
+            //         this.sanitize();
+            //         this.notifyChange();
+            //         this.update()
+            //     }
+            // );
 
-            row.setSequenceCombo(
-                'i t',
-                () => {
-                    this.data[row.nRow]['ITALIC'] = this.data[row.nRow]['ITALIC'] === 'True' ? 'False' : 'True';
-                    this.sanitize();
-                    this.notifyChange();
-                    this.update()
-                }
-            );
+            // row.setSequenceCombo(
+            //     'i t',
+            //     () => {
+            //         this.data[row.nRow]['ITALIC'] = this.data[row.nRow]['ITALIC'] === 'True' ? 'False' : 'True';
+            //         this.sanitize();
+            //         this.notifyChange();
+            //         this.update()
+            //     }
+            // );
 
-            row.setSequenceCombo(
-                'l s',
-                () => {
-                    this.data[row.nRow]['LETTERSPACED'] = this.data[row.nRow]['LETTERSPACED'] === 'True' ? 'False' : 'True';
-                    this.sanitize();
-                    this.notifyChange();
-                    this.update()
-                }
-            );
+            // row.setSequenceCombo(
+            //     'l s',
+            //     () => {
+            //         this.data[row.nRow]['LETTERSPACED'] = this.data[row.nRow]['LETTERSPACED'] === 'True' ? 'False' : 'True';
+            //         this.sanitize();
+            //         this.notifyChange();
+            //         this.update()
+            //     }
+            // );
 
             this.body.addRow(row);
             prevRow = row
@@ -924,29 +937,22 @@ class FontsTable {
                 // }
                 // else {
                     if (field === 'TOKEN') {
-                        if (row.data['FONT-FAMILY'] === 'Fraktur') {
-                            item.fontFamily = "UnifrakturMaguntia";
-                            // item.fontSize = 15
-                        }
-                        else {
-                            item.fontFamily = "AletheiaSans";
-                            // item.fontSize = 12
-                        }
-                        item.fontSize = 15;
+                        item.fontFamily = row.data['FONT-FAMILY'];
+                        // item.fontSize = 15;
 
-                        if (row.data['BOLD'] == 'True') {
-                            item.bold = true
-                        }
-                        else {
-                            item.bold = false
-                        }
+                        // if (row.data['BOLD'] == 'True') {
+                        //     item.bold = true
+                        // }
+                        // else {
+                        //     item.bold = false
+                        // }
 
-                        if (row.data['ITALIC'] == 'True') {
-                            item.italic = true
-                        }
-                        else {
-                            item.italic = false
-                        }
+                        // if (row.data['ITALIC'] == 'True') {
+                        //     item.italic = true
+                        // }
+                        // else {
+                        //     item.italic = false
+                        // }
 
                         if (row.data['LETTERSPACED'] == 'True') {
                             item.letterspaced = true

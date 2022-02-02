@@ -19,7 +19,7 @@ function updatePreview(row, urls, bounds) {
     let word_height = word_bottom - word_top;
 
     // let scale_factor = .32;
-    let scale_factor = (30 * (96 / 72)) / word_height;
+    let scale_factor = (20 * (96 / 72)) / word_height;
 
     let scaled_word_left = Math.floor(word_left * scale_factor);
     let scaled_word_top = Math.floor(word_top * scale_factor);
@@ -58,6 +58,8 @@ function updatePreview(row, urls, bounds) {
     img_url = img_url.replace('height', tile_height.toString());
 
     img_url = img_url.replace('full', "," + scaled_tile_height.toString());
+
+    console.log(img_url);
 
     offscreen.height = scaled_tile_height;
 

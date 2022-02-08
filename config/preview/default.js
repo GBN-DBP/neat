@@ -59,8 +59,6 @@ function updatePreview(row, urls, bounds) {
 
     img_url = img_url.replace('full', "," + scaled_tile_height.toString());
 
-    console.log(img_url);
-
     offscreen.height = scaled_tile_height;
 
     $("#preview").attr("src", offscreen.toDataURL());

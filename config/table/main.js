@@ -358,8 +358,10 @@ class FontsTable {
         this.head = new TableHead(this.fields);
         this.element.append(this.head.element);
 
+        this.head.addField('LOCATION');
         this.fields.forEach((field) => this.head.addField(field));
 
+        this.head.setWidth('LOCATION', 15);
         this.head.setWidth('TOKEN', 40);
 
         this.head.setPrevButton(() => this.stepsBackward(this.displayRows));
@@ -395,6 +397,8 @@ class FontsTable {
                     row.items['TOKEN'].fill()
                 }
             });
+
+            row.addItem('LOCATION', new TableItem(nRow.toString(), 'LOCATION', row, false));
 
             // TODO: Set background color depending on confidence value (if available)
             let tokenItem = new TableItem(row.data['TOKEN'], 'TOKEN', row, true);
@@ -932,10 +936,10 @@ class FontsTable {
             row.nRow = nRow;
 
             Object.entries(row.items).forEach(([field, item]) => {
-                // if (field === 'LOCATION') {
-                //     item.data = nRow.toString()
-                // }
-                // else {
+                if (field === 'LOCATION') {
+                    item.data = nRow.toString()
+                }
+                else {
                     if (field === 'TOKEN') {
                         item.fontFamily = row.data['FONT-FAMILY'];
                         // item.fontSize = 15;
@@ -962,7 +966,7 @@ class FontsTable {
                         }
                     }
                     item.data = row.data[field]
-                // }
+                }
                 item.fill()
             });
 

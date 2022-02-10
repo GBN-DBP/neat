@@ -82,9 +82,11 @@ function updatePreview(row, urls, bounds) {
 
     full_img_url = urls[row['url_id']];
 
-    full_img_url = full_img_url.replace("left,top,width,height", "full")
-    full_img_url = full_img_url.replace("left,right,top,bottom", "full")
-    full_img_url = full_img_url.replace("left,top,right,bottom", "full")
+    full_img_url = full_img_url.replace("full", ",4320");
+
+    full_img_url = full_img_url.replace("left,top,width,height", "full");
+    full_img_url = full_img_url.replace("left,right,top,bottom", "full");
+    full_img_url = full_img_url.replace("left,top,right,bottom", "full");
 
     if ($('#full-page-link').length == 0) {
         $('#preview-rgn').append($('<a href="" id="full-page-link" target="_blank" rel="noopener noreferrer"><small>full</small> </a>'));

@@ -149,18 +149,26 @@ function setupInterface(data, file, urls) {
         let lines = csv.split(/\r\n|\n/);
 
         csv = [ lines[0] ];
-        let url_id = -1;
+        // let url_id = -1;
 
-        for(let i = 0; i < data.data.length; i++){
-            if (data.data[i]['url_id'] > url_id) {
+        // for(let i = 0; i < data.data.length; i++){
+        //     if (data.data[i]['url_id'] > url_id) {
 
-                url_id = data.data[i]['url_id'];
+        //         url_id = data.data[i]['url_id'];
 
-                if (urls != null)
-                    csv.push("# " + urls[url_id]);
-            }
-            csv.push(lines[i+1]);
-        }
+        //         if (urls != null)
+        //             csv.push("# " + urls[url_id]);
+        //     }
+        //     csv.push(lines[i+1]);
+        // }
+
+        urls.forEach((url) => {
+            csv.push("# " + url)
+        });
+
+        lines.slice(1).forEach((line) => {
+            csv.push(line)
+        });
 
         csv = csv.join('\n');
 

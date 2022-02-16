@@ -10,13 +10,20 @@ function updatePreview(row, urls, bounds) {
     let offscreen = document.createElement('canvas');
 
     // word coordinates
-    let word_left = parseInt(row['left']);
-    let word_right = parseInt(row['right']);
-    let word_top = parseInt(row['top']);
-    let word_bottom = parseInt(row['bottom']);
+    // let word_left = parseInt(row['left']);
+    // let word_right = parseInt(row['right']);
+    // let word_top = parseInt(row['top']);
+    // let word_bottom = parseInt(row['bottom']);
 
-    let word_width = word_right - word_left;
-    let word_height = word_bottom - word_top;
+    // let word_width = word_right - word_left;
+    // let word_height = word_bottom - word_top;
+
+    let word_region = row['region'].split(',');
+
+    let word_left = parseInt(word_region[0]);
+    let word_top = parseInt(word_region[1]);
+    let word_width = parseInt(word_region[2]);
+    let word_height = parseInt(word_region[3]);
 
     // let scale_factor = .32;
     let scale_factor = (20 * (96 / 72)) / word_height;
@@ -42,7 +49,6 @@ function updatePreview(row, urls, bounds) {
     let scaled_tile_left = Math.floor(tile_left * scale_factor);
     let scaled_tile_top = Math.floor(tile_top * scale_factor);
 
-
     // highlight coordinates
     let highlight_offset = 5;
 
@@ -51,13 +57,19 @@ function updatePreview(row, urls, bounds) {
     let highlight_width = scaled_word_width + 2 * highlight_offset;
     let highlight_height = scaled_word_height + 2 * highlight_offset;
 
+    // img_url = img_url.replace('left', tile_left.toString());
+    // img_url = img_url.replace('top', tile_top.toString());
+    // img_url = img_url.replace('width', tile_width.toString());
+    // img_url = img_url.replace('height', tile_height.toString());
 
-    img_url = img_url.replace('left', tile_left.toString());
-    img_url = img_url.replace('top', tile_top.toString());
-    img_url = img_url.replace('width', tile_width.toString());
-    img_url = img_url.replace('height', tile_height.toString());
+    let tile_region =
+        tile_left.toString() + ',' + tile_top.toString() + ',' + tile_width.toString() + ',' + tile_height.toString();
 
-    img_url = img_url.replace('full', "," + scaled_tile_height.toString());
+    img_url = img_url.replace('region', tile_region);
+    img_url = img_url.replace('size', "," + scaled_tile_height.toString());
+    img_url = img_url.replace('rotation', row['rotation']);
+    img_url = img_url.replace('quality', 'gray');
+    img_url = img_url.replace('format', 'jpg');
 
     offscreen.height = scaled_tile_height;
 
@@ -82,11 +94,11 @@ function updatePreview(row, urls, bounds) {
 
     full_img_url = urls[row['url_id']];
 
-    full_img_url = full_img_url.replace("full", ",4320");
-
-    full_img_url = full_img_url.replace("left,top,width,height", "full");
-    full_img_url = full_img_url.replace("left,right,top,bottom", "full");
-    full_img_url = full_img_url.replace("left,top,right,bottom", "full");
+    full_img_url = full_img_url.replace('region', 'full');
+    full_img_url = full_img_url.replace('size', ',4320');
+    full_img_url = full_img_url.replace('rotation', '0');
+    full_img_url = full_img_url.replace('quality', 'default');
+    full_img_url = full_img_url.replace('format', 'jpg');
 
     if ($('#full-page-link').length == 0) {
         $('#preview-rgn').append($('<a href="" id="full-page-link" target="_blank" rel="noopener noreferrer"><small>full</small> </a>'));

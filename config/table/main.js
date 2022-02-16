@@ -109,7 +109,7 @@ class TableHead {
 
         let flex_grow = document.createElement('div');
         flex_grow.className = "flex-grow-1";
-        flex_grow.innerText = field;
+        flex_grow.innerText = field.toUpperCase().replace('_', ' ');
 
         d_flex.append(flex_grow);
         th.append(d_flex);
@@ -346,7 +346,7 @@ class FontsTable {
         this.wndListener = wndListener;
 
         // this.fields = ['TOKEN', 'LANG', 'FONT-FAMILY', 'BOLD', 'ITALIC', 'LETTERSPACED'];
-        this.fields = ['TOKEN', 'LANG', 'FONT-FAMILY'];
+        this.fields = ['text_equiv', 'language', 'font_family'];
         this.beingEdited = false;
         this.finish = null;
 
@@ -358,11 +358,13 @@ class FontsTable {
         this.head = new TableHead(this.fields);
         this.element.append(this.head.element);
 
-        this.head.addField('LOCATION');
+        // this.head.addField('LOCATION');
+        this.head.addField('');
         this.fields.forEach((field) => this.head.addField(field));
 
-        this.head.setWidth('LOCATION', 15);
-        this.head.setWidth('TOKEN', 40);
+        // this.head.setWidth('LOCATION', 15);
+        this.head.setWidth('', 5);
+        this.head.setWidth('text_equiv', 50);
 
         this.head.setPrevButton(() => this.stepsBackward(this.displayRows));
         this.head.setNextButton(() => this.stepsForward(this.displayRows));
@@ -381,8 +383,8 @@ class FontsTable {
         
             row.setOnFocusIn(() => {
                 if (!this.beingEdited) {
-                    row.items['TOKEN'].setFontSize(25);
-                    row.items['TOKEN'].fill()
+                    row.items['text_equiv'].setFontSize(25);
+                    row.items['text_equiv'].fill()
                 }
 
                 updatePreview(row.data, this.urls, this.previewBounds);
@@ -393,18 +395,19 @@ class FontsTable {
 
             row.setOnFocusOut(() => {
                 if (!this.beingEdited) {
-                    row.items['TOKEN'].setFontSize(15);
-                    row.items['TOKEN'].fill()
+                    row.items['text_equiv'].setFontSize(15);
+                    row.items['text_equiv'].fill()
                 }
             });
 
-            row.addItem('LOCATION', new TableItem(nRow.toString(), 'LOCATION', row, false));
+            // row.addItem('LOCATION', new TableItem(nRow.toString(), 'LOCATION', row, false));
+            row.addItem('', new TableItem(nRow.toString(), '#', row, false));
 
             // TODO: Set background color depending on confidence value (if available)
-            let tokenItem = new TableItem(row.data['TOKEN'], 'TOKEN', row, true);
-            row.addItem('TOKEN', tokenItem);
+            let tokenItem = new TableItem(row.data['text_equiv'], 'text_equiv', row, true);
+            row.addItem('text_equiv', tokenItem);
 
-            tokenItem.fontFamily = row.data['FONT-FAMILY'];
+            tokenItem.fontFamily = row.data['font_family'];
             tokenItem.fontSize = 15;
 
             // if (row.data['BOLD'] == 'True') {
@@ -512,8 +515,8 @@ class FontsTable {
             tokenItem.setOnClick(tokenItemSelect.bind(tokenItem));
             tokenItem.setSimpleCombo('enter', tokenItemSelect.bind(tokenItem));
 
-            let langItem = new TableItem(row.data['LANG'], 'LANG', row, true);
-            row.addItem('LANG', langItem);
+            let langItem = new TableItem(row.data['language'], 'language', row, true);
+            row.addItem('language', langItem);
 
             langItem.tagger = new Tagger(['German', 'Portuguese', 'English']);
 
@@ -568,8 +571,8 @@ class FontsTable {
             );
             langItem.setSimpleCombo('escape', () => this.finish(false));
 
-            let familyItem = new TableItem(row.data['FONT-FAMILY'], 'FONT-FAMILY', row, true);
-            row.addItem('FONT-FAMILY', familyItem);
+            let familyItem = new TableItem(row.data['font_family'], 'font_family', row, true);
+            row.addItem('font_family', familyItem);
 
             familyItem.tagger = new Tagger(['Antiqua', 'Italic', 'Script', 'Textura', 'Fraktur', 'Kanzlei']);
 
@@ -744,7 +747,7 @@ class FontsTable {
             row.setSequenceCombo(
                 'l g',
                 () => {
-                    this.data[row.nRow]['LANG'] = 'German';
+                    this.data[row.nRow]['language'] = 'German';
                     this.sanitize();
                     this.notifyChange();
                     this.update()
@@ -753,7 +756,7 @@ class FontsTable {
             row.setSequenceCombo(
                 'l p',
                 () => {
-                    this.data[row.nRow]['LANG'] = 'Portuguese';
+                    this.data[row.nRow]['language'] = 'Portuguese';
                     this.sanitize();
                     this.notifyChange();
                     this.update()
@@ -762,7 +765,7 @@ class FontsTable {
             row.setSequenceCombo(
                 'l e',
                 () => {
-                    this.data[row.nRow]['LANG'] = 'English';
+                    this.data[row.nRow]['language'] = 'English';
                     this.sanitize();
                     this.notifyChange();
                     this.update()
@@ -772,7 +775,7 @@ class FontsTable {
             row.setSequenceCombo(
                 'f a',
                 () => {
-                    this.data[row.nRow]['FONT-FAMILY'] = 'Antiqua';
+                    this.data[row.nRow]['font_family'] = 'Antiqua';
                     this.sanitize();
                     this.notifyChange();
                     this.update()
@@ -781,7 +784,7 @@ class FontsTable {
             row.setSequenceCombo(
                 'f i',
                 () => {
-                    this.data[row.nRow]['FONT-FAMILY'] = 'Italic';
+                    this.data[row.nRow]['font_family'] = 'Italic';
                     this.sanitize();
                     this.notifyChange();
                     this.update()
@@ -790,7 +793,7 @@ class FontsTable {
             row.setSequenceCombo(
                 'f s',
                 () => {
-                    this.data[row.nRow]['FONT-FAMILY'] = 'Script';
+                    this.data[row.nRow]['font_family'] = 'Script';
                     this.sanitize();
                     this.notifyChange();
                     this.update()
@@ -799,7 +802,7 @@ class FontsTable {
             row.setSequenceCombo(
                 'f t',
                 () => {
-                    this.data[row.nRow]['FONT-FAMILY'] = 'Textura';
+                    this.data[row.nRow]['font_family'] = 'Textura';
                     this.sanitize();
                     this.notifyChange();
                     this.update()
@@ -808,7 +811,7 @@ class FontsTable {
             row.setSequenceCombo(
                 'f f',
                 () => {
-                    this.data[row.nRow]['FONT-FAMILY'] = 'Fraktur';
+                    this.data[row.nRow]['font_family'] = 'Fraktur';
                     this.sanitize();
                     this.notifyChange();
                     this.update()
@@ -817,7 +820,7 @@ class FontsTable {
             row.setSequenceCombo(
                 'f k',
                 () => {
-                    this.data[row.nRow]['FONT-FAMILY'] = 'Kanzlei';
+                    this.data[row.nRow]['font_family'] = 'Kanzlei';
                     this.sanitize();
                     this.notifyChange();
                     this.update()
@@ -919,7 +922,7 @@ class FontsTable {
                 row[col] = row[col].toString().replace(/(\r\n|\n|\r)/gm, "")
             });
 
-            row['No.'] = word_pos;
+            // row['No.'] = word_pos;
 
             word_pos++
         })
@@ -936,12 +939,13 @@ class FontsTable {
             row.nRow = nRow;
 
             Object.entries(row.items).forEach(([field, item]) => {
-                if (field === 'LOCATION') {
+                // if (field === 'LOCATION') {
+                if (field === '') {
                     item.data = nRow.toString()
                 }
                 else {
-                    if (field === 'TOKEN') {
-                        item.fontFamily = row.data['FONT-FAMILY'];
+                    if (field === 'text_equiv') {
+                        item.fontFamily = row.data['font_family'];
                         // item.fontSize = 15;
 
                         // if (row.data['BOLD'] == 'True') {
@@ -958,12 +962,12 @@ class FontsTable {
                         //     item.italic = false
                         // }
 
-                        if (row.data['LETTERSPACED'] == 'True') {
-                            item.letterspaced = true
-                        }
-                        else {
-                            item.letterspaced = false
-                        }
+                        // if (row.data['LETTERSPACED'] == 'True') {
+                        //     item.letterspaced = true
+                        // }
+                        // else {
+                        //     item.letterspaced = false
+                        // }
                     }
                     item.data = row.data[field]
                 }

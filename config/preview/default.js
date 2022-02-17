@@ -94,9 +94,9 @@ function updatePreview(row, urls, bounds) {
 
     full_img_url = urls[row['url_id']];
 
-    full_img_url = full_img_url.replace('region', 'full');
-    full_img_url = full_img_url.replace('size', ',4320');
-    full_img_url = full_img_url.replace('rotation', '0');
+    full_img_url = full_img_url.replace('region', row['full_region']);
+    full_img_url = full_img_url.replace('size', 'full');
+    full_img_url = full_img_url.replace('rotation', row['full_rotation']);
     full_img_url = full_img_url.replace('quality', 'default');
     full_img_url = full_img_url.replace('format', 'jpg');
 

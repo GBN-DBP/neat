@@ -345,8 +345,8 @@ class FontsTable {
         this.notifyChange = notifyChange;
         this.wndListener = wndListener;
 
-        // this.fields = ['TOKEN', 'LANG', 'FONT-FAMILY', 'BOLD', 'ITALIC', 'LETTERSPACED'];
-        this.fields = ['text_equiv', 'language', 'font_family'];
+        // this.fields = ['text_equiv', 'language', 'font_family'];
+        this.fields = ['rotation'];
         this.beingEdited = false;
         this.finish = null;
 
@@ -358,13 +358,11 @@ class FontsTable {
         this.head = new TableHead(this.fields);
         this.element.append(this.head.element);
 
-        // this.head.addField('LOCATION');
         this.head.addField('');
         this.fields.forEach((field) => this.head.addField(field));
 
-        // this.head.setWidth('LOCATION', 15);
         this.head.setWidth('', 5);
-        this.head.setWidth('text_equiv', 50);
+        // this.head.setWidth('text_equiv', 50);
 
         this.head.setPrevButton(() => this.stepsBackward(this.displayRows));
         this.head.setNextButton(() => this.stepsForward(this.displayRows));
@@ -382,358 +380,381 @@ class FontsTable {
             }
         
             row.setOnFocusIn(() => {
-                if (!this.beingEdited) {
-                    row.items['text_equiv'].setFontSize(25);
-                    row.items['text_equiv'].fill()
-                }
+                // if (!this.beingEdited) {
+                //     row.items['text_equiv'].setFontSize(25);
+                //     row.items['text_equiv'].fill()
+                // }
 
                 updatePreview(row.data, this.urls, this.previewBounds);
 
-                this.previewRgn.style.transform = 'translate(0,'
-                    + (row.element.offsetTop + row.element.clientHeight/2) + 'px) translate(0%,-50%)'
+                // this.previewRgn.style.transform = 'translate(0,'
+                //     + (row.element.offsetTop + row.element.clientHeight/2) + 'px) translate(0%,-50%)'
             });
 
-            row.setOnFocusOut(() => {
-                if (!this.beingEdited) {
-                    row.items['text_equiv'].setFontSize(15);
-                    row.items['text_equiv'].fill()
-                }
+            // row.setOnFocusOut(() => {
+            //     if (!this.beingEdited) {
+            //         row.items['text_equiv'].setFontSize(15);
+            //         row.items['text_equiv'].fill()
+            //     }
+            // });
+
+            row.addItem('', new TableItem(nRow.toString(), '', row, false));
+
+            // // TODO: Set background color depending on confidence value (if available)
+            // let tokenItem = new TableItem(row.data['text_equiv'], 'text_equiv', row, true);
+            // row.addItem('text_equiv', tokenItem);
+
+            // tokenItem.fontFamily = row.data['font_family'];
+            // tokenItem.fontSize = 15;
+
+            // // if (row.data['BOLD'] == 'True') {
+            // //     tokenItem.bold = true
+            // // }
+
+            // // if (row.data['ITALIC'] == 'True') {
+            // //     tokenItem.italic = true
+            // // }
+
+            // // if (row.data['LETTERSPACED'] == 'True') {
+            // //     tokenItem.letterspaced = true
+            // // }
+
+            // let tokenItemSelect = function () {
+            //     if (this.parentRow.parentTable.beingEdited) return;
+
+            //     this.parentRow.parentTable.beingEdited = true;
+
+            //     this.parentRow.listener.stop_listening();
+            //     this.parentRow.parentTable.wndListener.stop_listening();
+
+            //     this.clear();
+            //     this.setClass("hover");
+
+            //     let textArea = document.createElement('textarea');
+            //     textArea.style.width = this.element.clientWidth + "px";
+            //     // textArea.style.height = this.element.clientHeight + "px";
+            //     textArea.style.height = this.fontSize + "pt";
+            //     if (this.letterspaced) {
+            //         textArea.style.letterSpacing = "0.3em"
+            //     }
+            //     textArea.style.fontFamily = this.fontFamily;
+            //     textArea.style.fontSize = this.fontSize + "pt";
+            //     textArea.className = "input";
+            //     textArea.tabIndex = "0";
+            //     textArea.value = this.data;
+
+            //     this.append(textArea);
+            //     textArea.focus();
+
+            //     let buttons = document.createElement('div');
+
+            //     let ok_btn = document.createElement('button');
+            //     ok_btn.style.fontFamily = "sans-serif";
+            //     ok_btn.className = "btn btn-secondary btn-sm";
+            //     ok_btn.innerText = "OK";
+            //     buttons.append(ok_btn);
+            //     buttons.append(" ");
+
+            //     let cancel_btn = document.createElement('button');
+            //     cancel_btn.style.fontFamily = "sans-serif";
+            //     cancel_btn.className = "btn btn-secondary btn-sm";
+            //     cancel_btn.innerText = "CANCEL";
+            //     buttons.append(cancel_btn);
+
+            //     this.append(buttons);
+
+            //     this.parentRow.parentTable.finish = (isOk) => {
+            //         this.setClass("editable hover");
+
+            //         keyboard.listener.reset();
+            //         listener.reset();
+
+            //         keyboard.clear();
+
+            //         if (isOk) {
+            //             this.parentRow.parentTable.data[this.parentRow.nRow][this.field] = textArea.value;
+            //             this.parentRow.parentTable.sanitize();
+            //             this.parentRow.parentTable.notifyChange();
+            //             this.parentRow.parentTable.update()
+            //         }
+
+            //         this.parentRow.parentTable.beingEdited = false;
+
+            //         this.fill();
+            //         this.focus();
+
+            //         this.parentRow.listener.listen();
+            //         this.parentRow.parentTable.wndListener.listen()
+            //     };
+
+            //     let keyboard = new Keyboard(
+            //         this.parentRow.parentTable.keyboardRgn,
+            //         textArea,
+            //         this.parentRow.parentTable.finish
+            //     );
+
+            //     let listener = new window.keypress.Listener(textArea, {prevent_repeat: true});
+
+            //     listener.simple_combo('enter', () => this.parentRow.parentTable.finish(true));
+            //     listener.simple_combo('esc', () => this.parentRow.parentTable.finish(false));
+            //     // listener.simple_combo('ctrl', keyboard.toggleLayout.bind(keyboard));
+
+            //     ok_btn.onclick = (evt) => {
+            //         evt.stopPropagation();
+            //         this.parentRow.parentTable.finish(true)
+            //     };
+            //     cancel_btn.onclick = (evt) => {
+            //         evt.stopPropagation();
+            //         this.parentRow.parentTable.finish(false)
+            //     };
+            // };
+
+            // tokenItem.setOnClick(tokenItemSelect.bind(tokenItem));
+            // tokenItem.setSimpleCombo('enter', tokenItemSelect.bind(tokenItem));
+
+            // let langItem = new TableItem(row.data['language'], 'language', row, true);
+            // row.addItem('language', langItem);
+
+            // langItem.tagger = new Tagger(['German', 'Portuguese', 'English']);
+
+            // let langItemSelect = function () {
+            //     if (this.parentRow.parentTable.beingEdited) return;
+
+            //     this.parentRow.parentTable.beingEdited = true;
+
+            //     this.clear();
+            //     this.setClass("hover");
+
+            //     this.element.append(this.tagger.element);
+
+            //     this.parentRow.parentTable.finish = (isOk, tag = null) => {
+            //         this.tagger.listener.reset();
+
+            //         this.setClass("editable hover");
+
+            //         if (isOk && tag != null) {
+            //             this.parentRow.parentTable.data[this.parentRow.nRow][this.field] = tag;
+            //             this.parentRow.parentTable.sanitize();
+            //             this.parentRow.parentTable.notifyChange();
+            //             this.parentRow.parentTable.update()
+            //         }
+
+            //         this.parentRow.parentTable.beingEdited = false;
+
+            //         this.fill();
+            //         this.focus()
+            //     };
+
+            //     this.tagger.sections.forEach((section) => {
+            //         let finish = (evt) => {
+            //             evt.stopPropagation();
+            //             this.parentRow.parentTable.finish(true, section.tag)
+            //         };
+
+            //         section.setOnClick(finish);
+            //         section.setSimpleCombo('enter', finish)
+            //     });
+
+            //     this.tagger.setOnMouseLeave(() => this.parentRow.parentTable.finish(false))
+            // };
+
+            // langItem.setOnClick(langItemSelect.bind(langItem));
+            // langItem.setSimpleCombo(
+            //     'enter',
+            //     () => {
+            //         langItemSelect.bind(langItem)();
+            //         langItem.tagger.sections[0].focus()
+            //     }
+            // );
+            // langItem.setSimpleCombo('escape', () => this.finish(false));
+
+            // let familyItem = new TableItem(row.data['font_family'], 'font_family', row, true);
+            // row.addItem('font_family', familyItem);
+
+            // familyItem.tagger = new Tagger(['Antiqua', 'Italic', 'Script', 'Textura', 'Fraktur', 'Kanzlei']);
+
+            // let familyItemSelect = function () {
+            //     if (this.parentRow.parentTable.beingEdited) return;
+
+            //     this.parentRow.parentTable.beingEdited = true;
+
+            //     this.clear();
+            //     this.setClass("hover");
+
+            //     this.element.append(this.tagger.element);
+
+            //     this.parentRow.parentTable.finish = (isOk, tag = null) => {
+            //         this.tagger.listener.reset();
+
+            //         this.setClass("editable hover");
+
+            //         if (isOk && tag != null) {
+            //             this.parentRow.parentTable.data[this.parentRow.nRow][this.field] = tag;
+            //             this.parentRow.parentTable.sanitize();
+            //             this.parentRow.parentTable.notifyChange();
+            //             this.parentRow.parentTable.update()
+            //         }
+
+            //         this.parentRow.parentTable.beingEdited = false;
+
+            //         this.fill();
+            //         this.focus()
+            //     };
+
+            //     this.tagger.sections.forEach((section) => {
+            //         let finish = (evt) => {
+            //             evt.stopPropagation();
+            //             this.parentRow.parentTable.finish(true, section.tag)
+            //         };
+
+            //         section.setOnClick(finish);
+            //         section.setSimpleCombo('enter', finish)
+            //     });
+
+            //     this.tagger.setOnMouseLeave(() => this.parentRow.parentTable.finish(false))
+            // };
+
+            // familyItem.setOnClick(familyItemSelect.bind(familyItem));
+            // familyItem.setSimpleCombo(
+            //     'enter',
+            //     () => {
+            //         familyItemSelect.bind(familyItem)();
+            //         familyItem.tagger.sections[0].focus()
+            //     }
+            // );
+            // familyItem.setSimpleCombo('escape', () => this.finish(false));
+
+            // // let boldItem = new TableItem(row.data['BOLD'], 'BOLD', row, true);
+            // // row.addItem('BOLD', boldItem);
+
+            // // let boldItemFill = function () {
+            // //     this.clear();
+
+            // //     this.box = document.createElement('input');
+            // //     this.box.type = "checkbox";
+            // //     this.element.append(this.box);
+
+            // //     if (this.parentRow.parentTable.data[this.parentRow.nRow]['BOLD'] == 'True') {
+            // //         this.box.checked = true
+            // //     } else {
+            // //         this.box.checked = false
+            // //     }
+
+            // //     this.box.onclick = (evt) => {
+            // //         evt.stopPropagation();
+
+            // //         if (this.box.checked) {
+            // //             this.parentRow.parentTable.data[this.parentRow.nRow]['BOLD'] = 'True';
+            // //             this.parentRow.items['TOKEN'].bold = true
+            // //         }
+            // //         else {
+            // //             this.parentRow.parentTable.data[this.parentRow.nRow]['BOLD'] = 'False';
+            // //             this.parentRow.items['TOKEN'].bold = false
+            // //         }
+
+            // //         this.parentRow.parentTable.update()
+            // //     }
+            // // }
+
+            // // boldItem.fill = boldItemFill
+            // // boldItem.setOnClick(() => boldItem.box.click());
+            // // boldItem.setSimpleCombo('enter', () => boldItem.box.click());
+
+            // // let italicItem = new TableItem(row.data['ITALIC'], 'ITALIC', row, true);
+            // // row.addItem('ITALIC', italicItem);
+
+            // // let italicItemFill = function () {
+            // //     this.clear();
+
+            // //     this.box = document.createElement('input');
+            // //     this.box.type = "checkbox";
+            // //     this.element.append(this.box);
+
+            // //     if (this.parentRow.parentTable.data[this.parentRow.nRow]['ITALIC'] == 'True') {
+            // //         this.box.checked = true
+            // //     } else {
+            // //         this.box.checked = false
+            // //     }
+
+            // //     this.box.onclick = (evt) => {
+            // //         evt.stopPropagation();
+
+            // //         if (this.box.checked) {
+            // //             this.parentRow.parentTable.data[this.parentRow.nRow]['ITALIC'] = 'True';
+            // //             this.parentRow.items['TOKEN'].italic = true
+            // //         }
+            // //         else {
+            // //             this.parentRow.parentTable.data[this.parentRow.nRow]['ITALIC'] = 'False';
+            // //             this.parentRow.items['TOKEN'].italic = false
+            // //         }
+
+            // //         this.parentRow.parentTable.update()
+            // //     }
+            // // }
+
+            // // italicItem.fill = italicItemFill;
+            // // italicItem.setOnClick(() => italicItem.box.click());
+            // // italicItem.setSimpleCombo('enter', () => italicItem.box.click());
+
+            // // let letterspacedItem = new TableItem(row.data['LETTERSPACED'], 'LETTERSPACED', row, true);
+            // // row.addItem('LETTERSPACED', letterspacedItem);
+
+            // // let letterspacedItemFill = function () {
+            // //     this.clear();
+
+            // //     this.box = document.createElement('input');
+            // //     this.box.type = "checkbox";
+            // //     this.element.append(this.box);
+
+            // //     if (this.parentRow.parentTable.data[this.parentRow.nRow]['LETTERSPACED'] == 'True') {
+            // //         this.box.checked = true
+            // //     } else {
+            // //         this.box.checked = false
+            // //     }
+
+            // //     this.box.onclick = (evt) => {
+            // //         evt.stopPropagation();
+
+            // //         if (this.box.checked) {
+            // //             this.parentRow.parentTable.data[this.parentRow.nRow]['LETTERSPACED'] = 'True';
+            // //             this.parentRow.items['TOKEN'].letterspaced = true
+            // //         }
+            // //         else {
+            // //             this.parentRow.parentTable.data[this.parentRow.nRow]['LETTERSPACED'] = 'False';
+            // //             this.parentRow.items['TOKEN'].letterspaced = false
+            // //         }
+
+            // //         this.parentRow.parentTable.update()
+            // //     }
+            // // }
+
+            // // letterspacedItem.fill = letterspacedItemFill
+            // // letterspacedItem.setOnClick(() => letterspacedItem.box.click());
+            // // letterspacedItem.setSimpleCombo('enter', () => letterspacedItem.box.click());
+
+            let rotationItem = new TableItem(row.data['rotation'], 'rotation', row, true);
+            row.addItem('rotation', rotationItem);
+
+            rotationItem.setSimpleCombo('left', (evt) => {
+                evt.stopPropagation();
+
+                let rotation = (parseFloat(rotationItem.data) + 355) % 360;
+
+                this.data[nRow]['rotation'] = rotation.toString();
+                this.sanitize();
+                this.notifyChange();
+                this.update()
             });
-
-            // row.addItem('LOCATION', new TableItem(nRow.toString(), 'LOCATION', row, false));
-            row.addItem('', new TableItem(nRow.toString(), '#', row, false));
-
-            // TODO: Set background color depending on confidence value (if available)
-            let tokenItem = new TableItem(row.data['text_equiv'], 'text_equiv', row, true);
-            row.addItem('text_equiv', tokenItem);
-
-            tokenItem.fontFamily = row.data['font_family'];
-            tokenItem.fontSize = 15;
-
-            // if (row.data['BOLD'] == 'True') {
-            //     tokenItem.bold = true
-            // }
-
-            // if (row.data['ITALIC'] == 'True') {
-            //     tokenItem.italic = true
-            // }
-
-            if (row.data['LETTERSPACED'] == 'True') {
-                tokenItem.letterspaced = true
-            }
-
-            let tokenItemSelect = function () {
-                if (this.parentRow.parentTable.beingEdited) return;
-
-                this.parentRow.parentTable.beingEdited = true;
-
-                this.parentRow.listener.stop_listening();
-                this.parentRow.parentTable.wndListener.stop_listening();
-
-                this.clear();
-                this.setClass("hover");
-
-                let textArea = document.createElement('textarea');
-                textArea.style.width = this.element.clientWidth + "px";
-                // textArea.style.height = this.element.clientHeight + "px";
-                textArea.style.height = this.fontSize + "pt";
-                if (this.letterspaced) {
-                    textArea.style.letterSpacing = "0.3em"
-                }
-                textArea.style.fontFamily = this.fontFamily;
-                textArea.style.fontSize = this.fontSize + "pt";
-                textArea.className = "input";
-                textArea.tabIndex = "0";
-                textArea.value = this.data;
-
-                this.append(textArea);
-                textArea.focus();
-
-                let buttons = document.createElement('div');
-
-                let ok_btn = document.createElement('button');
-                ok_btn.style.fontFamily = "sans-serif";
-                ok_btn.className = "btn btn-secondary btn-sm";
-                ok_btn.innerText = "OK";
-                buttons.append(ok_btn);
-                buttons.append(" ");
-
-                let cancel_btn = document.createElement('button');
-                cancel_btn.style.fontFamily = "sans-serif";
-                cancel_btn.className = "btn btn-secondary btn-sm";
-                cancel_btn.innerText = "CANCEL";
-                buttons.append(cancel_btn);
-
-                this.append(buttons);
-
-                this.parentRow.parentTable.finish = (isOk) => {
-                    this.setClass("editable hover");
-
-                    keyboard.listener.reset();
-                    listener.reset();
-
-                    keyboard.clear();
-
-                    if (isOk) {
-                        this.parentRow.parentTable.data[this.parentRow.nRow][this.field] = textArea.value;
-                        this.parentRow.parentTable.sanitize();
-                        this.parentRow.parentTable.notifyChange();
-                        this.parentRow.parentTable.update()
-                    }
-
-                    this.parentRow.parentTable.beingEdited = false;
-
-                    this.fill();
-                    this.focus();
-
-                    this.parentRow.listener.listen();
-                    this.parentRow.parentTable.wndListener.listen()
-                };
-
-                let keyboard = new Keyboard(
-                    this.parentRow.parentTable.keyboardRgn,
-                    textArea,
-                    this.parentRow.parentTable.finish
-                );
-
-                let listener = new window.keypress.Listener(textArea, {prevent_repeat: true});
-
-                listener.simple_combo('enter', () => this.parentRow.parentTable.finish(true));
-                listener.simple_combo('esc', () => this.parentRow.parentTable.finish(false));
-                // listener.simple_combo('ctrl', keyboard.toggleLayout.bind(keyboard));
-
-                ok_btn.onclick = (evt) => {
-                    evt.stopPropagation();
-                    this.parentRow.parentTable.finish(true)
-                };
-                cancel_btn.onclick = (evt) => {
-                    evt.stopPropagation();
-                    this.parentRow.parentTable.finish(false)
-                };
-            };
-
-            tokenItem.setOnClick(tokenItemSelect.bind(tokenItem));
-            tokenItem.setSimpleCombo('enter', tokenItemSelect.bind(tokenItem));
-
-            let langItem = new TableItem(row.data['language'], 'language', row, true);
-            row.addItem('language', langItem);
-
-            langItem.tagger = new Tagger(['German', 'Portuguese', 'English']);
-
-            let langItemSelect = function () {
-                if (this.parentRow.parentTable.beingEdited) return;
-
-                this.parentRow.parentTable.beingEdited = true;
-
-                this.clear();
-                this.setClass("hover");
-
-                this.element.append(this.tagger.element);
-
-                this.parentRow.parentTable.finish = (isOk, tag = null) => {
-                    this.tagger.listener.reset();
-
-                    this.setClass("editable hover");
-
-                    if (isOk && tag != null) {
-                        this.parentRow.parentTable.data[this.parentRow.nRow][this.field] = tag;
-                        this.parentRow.parentTable.sanitize();
-                        this.parentRow.parentTable.notifyChange();
-                        this.parentRow.parentTable.update()
-                    }
-
-                    this.parentRow.parentTable.beingEdited = false;
-
-                    this.fill();
-                    this.focus()
-                };
-
-                this.tagger.sections.forEach((section) => {
-                    let finish = (evt) => {
-                        evt.stopPropagation();
-                        this.parentRow.parentTable.finish(true, section.tag)
-                    };
-
-                    section.setOnClick(finish);
-                    section.setSimpleCombo('enter', finish)
-                });
-
-                this.tagger.setOnMouseLeave(() => this.parentRow.parentTable.finish(false))
-            };
-
-            langItem.setOnClick(langItemSelect.bind(langItem));
-            langItem.setSimpleCombo(
-                'enter',
-                () => {
-                    langItemSelect.bind(langItem)();
-                    langItem.tagger.sections[0].focus()
-                }
-            );
-            langItem.setSimpleCombo('escape', () => this.finish(false));
-
-            let familyItem = new TableItem(row.data['font_family'], 'font_family', row, true);
-            row.addItem('font_family', familyItem);
-
-            familyItem.tagger = new Tagger(['Antiqua', 'Italic', 'Script', 'Textura', 'Fraktur', 'Kanzlei']);
-
-            let familyItemSelect = function () {
-                if (this.parentRow.parentTable.beingEdited) return;
-
-                this.parentRow.parentTable.beingEdited = true;
-
-                this.clear();
-                this.setClass("hover");
-
-                this.element.append(this.tagger.element);
-
-                this.parentRow.parentTable.finish = (isOk, tag = null) => {
-                    this.tagger.listener.reset();
-
-                    this.setClass("editable hover");
-
-                    if (isOk && tag != null) {
-                        this.parentRow.parentTable.data[this.parentRow.nRow][this.field] = tag;
-                        this.parentRow.parentTable.sanitize();
-                        this.parentRow.parentTable.notifyChange();
-                        this.parentRow.parentTable.update()
-                    }
-
-                    this.parentRow.parentTable.beingEdited = false;
-
-                    this.fill();
-                    this.focus()
-                };
-
-                this.tagger.sections.forEach((section) => {
-                    let finish = (evt) => {
-                        evt.stopPropagation();
-                        this.parentRow.parentTable.finish(true, section.tag)
-                    };
-
-                    section.setOnClick(finish);
-                    section.setSimpleCombo('enter', finish)
-                });
-
-                this.tagger.setOnMouseLeave(() => this.parentRow.parentTable.finish(false))
-            };
-
-            familyItem.setOnClick(familyItemSelect.bind(familyItem));
-            familyItem.setSimpleCombo(
-                'enter',
-                () => {
-                    familyItemSelect.bind(familyItem)();
-                    familyItem.tagger.sections[0].focus()
-                }
-            );
-            familyItem.setSimpleCombo('escape', () => this.finish(false));
-
-            // let boldItem = new TableItem(row.data['BOLD'], 'BOLD', row, true);
-            // row.addItem('BOLD', boldItem);
-
-            // let boldItemFill = function () {
-            //     this.clear();
-
-            //     this.box = document.createElement('input');
-            //     this.box.type = "checkbox";
-            //     this.element.append(this.box);
-
-            //     if (this.parentRow.parentTable.data[this.parentRow.nRow]['BOLD'] == 'True') {
-            //         this.box.checked = true
-            //     } else {
-            //         this.box.checked = false
-            //     }
-
-            //     this.box.onclick = (evt) => {
-            //         evt.stopPropagation();
-
-            //         if (this.box.checked) {
-            //             this.parentRow.parentTable.data[this.parentRow.nRow]['BOLD'] = 'True';
-            //             this.parentRow.items['TOKEN'].bold = true
-            //         }
-            //         else {
-            //             this.parentRow.parentTable.data[this.parentRow.nRow]['BOLD'] = 'False';
-            //             this.parentRow.items['TOKEN'].bold = false
-            //         }
-
-            //         this.parentRow.parentTable.update()
-            //     }
-            // }
-
-            // boldItem.fill = boldItemFill
-            // boldItem.setOnClick(() => boldItem.box.click());
-            // boldItem.setSimpleCombo('enter', () => boldItem.box.click());
-
-            // let italicItem = new TableItem(row.data['ITALIC'], 'ITALIC', row, true);
-            // row.addItem('ITALIC', italicItem);
-
-            // let italicItemFill = function () {
-            //     this.clear();
-
-            //     this.box = document.createElement('input');
-            //     this.box.type = "checkbox";
-            //     this.element.append(this.box);
-
-            //     if (this.parentRow.parentTable.data[this.parentRow.nRow]['ITALIC'] == 'True') {
-            //         this.box.checked = true
-            //     } else {
-            //         this.box.checked = false
-            //     }
-
-            //     this.box.onclick = (evt) => {
-            //         evt.stopPropagation();
-
-            //         if (this.box.checked) {
-            //             this.parentRow.parentTable.data[this.parentRow.nRow]['ITALIC'] = 'True';
-            //             this.parentRow.items['TOKEN'].italic = true
-            //         }
-            //         else {
-            //             this.parentRow.parentTable.data[this.parentRow.nRow]['ITALIC'] = 'False';
-            //             this.parentRow.items['TOKEN'].italic = false
-            //         }
-
-            //         this.parentRow.parentTable.update()
-            //     }
-            // }
-
-            // italicItem.fill = italicItemFill;
-            // italicItem.setOnClick(() => italicItem.box.click());
-            // italicItem.setSimpleCombo('enter', () => italicItem.box.click());
-
-            // let letterspacedItem = new TableItem(row.data['LETTERSPACED'], 'LETTERSPACED', row, true);
-            // row.addItem('LETTERSPACED', letterspacedItem);
-
-            // let letterspacedItemFill = function () {
-            //     this.clear();
-
-            //     this.box = document.createElement('input');
-            //     this.box.type = "checkbox";
-            //     this.element.append(this.box);
-
-            //     if (this.parentRow.parentTable.data[this.parentRow.nRow]['LETTERSPACED'] == 'True') {
-            //         this.box.checked = true
-            //     } else {
-            //         this.box.checked = false
-            //     }
-
-            //     this.box.onclick = (evt) => {
-            //         evt.stopPropagation();
-
-            //         if (this.box.checked) {
-            //             this.parentRow.parentTable.data[this.parentRow.nRow]['LETTERSPACED'] = 'True';
-            //             this.parentRow.items['TOKEN'].letterspaced = true
-            //         }
-            //         else {
-            //             this.parentRow.parentTable.data[this.parentRow.nRow]['LETTERSPACED'] = 'False';
-            //             this.parentRow.items['TOKEN'].letterspaced = false
-            //         }
-
-            //         this.parentRow.parentTable.update()
-            //     }
-            // }
-
-            // letterspacedItem.fill = letterspacedItemFill
-            // letterspacedItem.setOnClick(() => letterspacedItem.box.click());
-            // letterspacedItem.setSimpleCombo('enter', () => letterspacedItem.box.click());
+            rotationItem.setSimpleCombo('right', (evt) => {
+                evt.stopPropagation();
+
+                let rotation = (parseFloat(rotationItem.data) + 365) % 360;
+
+                this.data[nRow]['rotation'] = rotation.toString();
+                this.sanitize();
+                this.notifyChange();
+                this.update()
+            });
 
             Object.entries(row.items).forEach(([field, item]) => {
                 item.setOnMouseOver((event) => {
@@ -744,93 +765,28 @@ class FontsTable {
                 item.fill()
             });
 
-            row.setSequenceCombo(
-                'l g',
-                () => {
-                    this.data[row.nRow]['language'] = 'German';
-                    this.sanitize();
-                    this.notifyChange();
-                    this.update()
-                }
-            );
-            row.setSequenceCombo(
-                'l p',
-                () => {
-                    this.data[row.nRow]['language'] = 'Portuguese';
-                    this.sanitize();
-                    this.notifyChange();
-                    this.update()
-                }
-            );
-            row.setSequenceCombo(
-                'l e',
-                () => {
-                    this.data[row.nRow]['language'] = 'English';
-                    this.sanitize();
-                    this.notifyChange();
-                    this.update()
-                }
-            );
-
-            row.setSequenceCombo(
-                'f a',
-                () => {
-                    this.data[row.nRow]['font_family'] = 'Antiqua';
-                    this.sanitize();
-                    this.notifyChange();
-                    this.update()
-                }
-            );
-            row.setSequenceCombo(
-                'f i',
-                () => {
-                    this.data[row.nRow]['font_family'] = 'Italic';
-                    this.sanitize();
-                    this.notifyChange();
-                    this.update()
-                }
-            );
-            row.setSequenceCombo(
-                'f s',
-                () => {
-                    this.data[row.nRow]['font_family'] = 'Script';
-                    this.sanitize();
-                    this.notifyChange();
-                    this.update()
-                }
-            );
-            row.setSequenceCombo(
-                'f t',
-                () => {
-                    this.data[row.nRow]['font_family'] = 'Textura';
-                    this.sanitize();
-                    this.notifyChange();
-                    this.update()
-                }
-            );
-            row.setSequenceCombo(
-                'f f',
-                () => {
-                    this.data[row.nRow]['font_family'] = 'Fraktur';
-                    this.sanitize();
-                    this.notifyChange();
-                    this.update()
-                }
-            );
-            row.setSequenceCombo(
-                'f k',
-                () => {
-                    this.data[row.nRow]['font_family'] = 'Kanzlei';
-                    this.sanitize();
-                    this.notifyChange();
-                    this.update()
-                }
-            );
-
             // row.setSequenceCombo(
-            //     'b l',
+            //     'l g',
             //     () => {
-            //         this.data[row.nRow]['BOLD'] = this.data[row.nRow]['BOLD'] === 'True' ? 'False' : 'True';
+            //         this.data[row.nRow]['language'] = 'German';
+            //         this.sanitize();
+            //         this.notifyChange();
+            //         this.update()
+            //     }
+            // );
+            // row.setSequenceCombo(
+            //     'l p',
+            //     () => {
+            //         this.data[row.nRow]['language'] = 'Portuguese';
+            //         this.sanitize();
+            //         this.notifyChange();
+            //         this.update()
+            //     }
+            // );
+            // row.setSequenceCombo(
+            //     'l e',
+            //     () => {
+            //         this.data[row.nRow]['language'] = 'English';
             //         this.sanitize();
             //         this.notifyChange();
             //         this.update()
@@ -838,24 +794,89 @@ class FontsTable {
             // );
 
             // row.setSequenceCombo(
-            //     'i t',
+            //     'f a',
             //     () => {
-            //         this.data[row.nRow]['ITALIC'] = this.data[row.nRow]['ITALIC'] === 'True' ? 'False' : 'True';
+            //         this.data[row.nRow]['font_family'] = 'Antiqua';
+            //         this.sanitize();
+            //         this.notifyChange();
+            //         this.update()
+            //     }
+            // );
+            // row.setSequenceCombo(
+            //     'f i',
+            //     () => {
+            //         this.data[row.nRow]['font_family'] = 'Italic';
+            //         this.sanitize();
+            //         this.notifyChange();
+            //         this.update()
+            //     }
+            // );
+            // row.setSequenceCombo(
+            //     'f s',
+            //     () => {
+            //         this.data[row.nRow]['font_family'] = 'Script';
+            //         this.sanitize();
+            //         this.notifyChange();
+            //         this.update()
+            //     }
+            // );
+            // row.setSequenceCombo(
+            //     'f t',
+            //     () => {
+            //         this.data[row.nRow]['font_family'] = 'Textura';
+            //         this.sanitize();
+            //         this.notifyChange();
+            //         this.update()
+            //     }
+            // );
+            // row.setSequenceCombo(
+            //     'f f',
+            //     () => {
+            //         this.data[row.nRow]['font_family'] = 'Fraktur';
+            //         this.sanitize();
+            //         this.notifyChange();
+            //         this.update()
+            //     }
+            // );
+            // row.setSequenceCombo(
+            //     'f k',
+            //     () => {
+            //         this.data[row.nRow]['font_family'] = 'Kanzlei';
             //         this.sanitize();
             //         this.notifyChange();
             //         this.update()
             //     }
             // );
 
-            // row.setSequenceCombo(
-            //     'l s',
-            //     () => {
-            //         this.data[row.nRow]['LETTERSPACED'] = this.data[row.nRow]['LETTERSPACED'] === 'True' ? 'False' : 'True';
-            //         this.sanitize();
-            //         this.notifyChange();
-            //         this.update()
-            //     }
-            // );
+            // // row.setSequenceCombo(
+            // //     'b l',
+            // //     () => {
+            // //         this.data[row.nRow]['BOLD'] = this.data[row.nRow]['BOLD'] === 'True' ? 'False' : 'True';
+            // //         this.sanitize();
+            // //         this.notifyChange();
+            // //         this.update()
+            // //     }
+            // // );
+
+            // // row.setSequenceCombo(
+            // //     'i t',
+            // //     () => {
+            // //         this.data[row.nRow]['ITALIC'] = this.data[row.nRow]['ITALIC'] === 'True' ? 'False' : 'True';
+            // //         this.sanitize();
+            // //         this.notifyChange();
+            // //         this.update()
+            // //     }
+            // // );
+
+            // // row.setSequenceCombo(
+            // //     'l s',
+            // //     () => {
+            // //         this.data[row.nRow]['LETTERSPACED'] = this.data[row.nRow]['LETTERSPACED'] === 'True' ? 'False' : 'True';
+            // //         this.sanitize();
+            // //         this.notifyChange();
+            // //         this.update()
+            // //     }
+            // // );
 
             this.body.addRow(row);
             prevRow = row
@@ -939,36 +960,35 @@ class FontsTable {
             row.nRow = nRow;
 
             Object.entries(row.items).forEach(([field, item]) => {
-                // if (field === 'LOCATION') {
                 if (field === '') {
                     item.data = nRow.toString()
                 }
                 else {
-                    if (field === 'text_equiv') {
-                        item.fontFamily = row.data['font_family'];
-                        // item.fontSize = 15;
+                    // if (field === 'text_equiv') {
+                    //     item.fontFamily = row.data['font_family'];
+                    //     // item.fontSize = 15;
 
-                        // if (row.data['BOLD'] == 'True') {
-                        //     item.bold = true
-                        // }
-                        // else {
-                        //     item.bold = false
-                        // }
+                    //     // if (row.data['BOLD'] == 'True') {
+                    //     //     item.bold = true
+                    //     // }
+                    //     // else {
+                    //     //     item.bold = false
+                    //     // }
 
-                        // if (row.data['ITALIC'] == 'True') {
-                        //     item.italic = true
-                        // }
-                        // else {
-                        //     item.italic = false
-                        // }
+                    //     // if (row.data['ITALIC'] == 'True') {
+                    //     //     item.italic = true
+                    //     // }
+                    //     // else {
+                    //     //     item.italic = false
+                    //     // }
 
-                        // if (row.data['LETTERSPACED'] == 'True') {
-                        //     item.letterspaced = true
-                        // }
-                        // else {
-                        //     item.letterspaced = false
-                        // }
-                    }
+                    //     // if (row.data['LETTERSPACED'] == 'True') {
+                    //     //     item.letterspaced = true
+                    //     // }
+                    //     // else {
+                    //     //     item.letterspaced = false
+                    //     // }
+                    // }
                     item.data = row.data[field]
                 }
                 item.fill()

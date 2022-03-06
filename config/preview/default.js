@@ -88,25 +88,52 @@ function updatePreview(row, urls, bounds) {
             img_url = img_url + '/' + 'gray';           // quality
             img_url = img_url + '.' + 'jpg';            // format
 
-            $("#preview").attr("src", offscreen.toDataURL());
+            // $("#preview").attr("src", offscreen.toDataURL());
 
-            let ctx = offscreen.getContext("2d");
-            let img = new Image();
-            img.crossOrigin = "anonymous";
+            // let ctx = offscreen.getContext("2d");
+            // let img = new Image();
+            // img.crossOrigin = "anonymous";
 
-            img.onload = function() {
-                let x = Math.floor(min.x * scale_factor);
-                let y = Math.floor(min.y * scale_factor);
+            // img.onload = function() {
+            //     let x = Math.floor(min.x * scale_factor);
+            //     let y = Math.floor(min.y * scale_factor);
 
-                ctx.drawImage(img, x, y);
-                ctx.beginPath();
-                // ctx.fillStyle = "#f0e4425f";
-                // ctx.fillRect(highlight_left, highlight_top, highlight_width, highlight_height);
+            //     ctx.drawImage(img, x, y);
+            //     ctx.beginPath();
 
-                $("#preview").attr("src", offscreen.toDataURL());
-            };
+            //     let p = 10;
 
-            img.src = img_url
+            //     for (let x = 0; x <= canvas_width; x += 60) {
+            //         ctx.moveTo(0.5 + x + p, p);
+            //         ctx.lineTo(0.5 + x + p, canvas_width + p);
+            //     }
+            //     for (let y = 0; y <= canvas_width; y += 60) {
+            //         ctx.moveTo(p, 0.5 + y + p);
+            //         ctx.lineTo(canvas_width + p, 0.5 + y + p);
+            //     }
+            //     ctx.strokeStyle = "#f0e442";
+            //     ctx.stroke();
+
+            //     $("#preview").attr("src", offscreen.toDataURL());
+            // };
+
+            // img.src = img_url
+
+            map.eachLayer((layer) => {
+                map.removeLayer(layer)
+            });
+
+            L.tileLayer.iiif(
+                info_url,
+                {
+                    // region: word_region,
+                    // size: size,
+                    rotation: row['rotation'],
+                    quality: 'gray',
+                    tileFormat: 'png',
+                    // tileSize: 4096
+                }
+            ).addTo(map)
         })
     }
     else {

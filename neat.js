@@ -476,12 +476,17 @@ function setupInterface(data, file, urls) {
     return that;
 }
 
-
+var map;
 $(document).ready(
     function() {
 
         $('#tsv-file').change(
             function(evt) {
+                map = L.map('preview', {
+                    center: [0, 0],
+                    crs: L.CRS.Simple,
+                    zoom: 0,
+                });
 
                 loadFile ( evt,
                     function(results, file, urls) {

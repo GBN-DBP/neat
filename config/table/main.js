@@ -738,7 +738,7 @@ class FontsTable {
             rotationItem.setSimpleCombo('left', (evt) => {
                 evt.stopPropagation();
 
-                let rotation = (parseFloat(rotationItem.data) + 355) % 360;
+                let rotation = (parseFloat(rotationItem.data) + 359) % 360;
 
                 this.data[nRow]['rotation'] = rotation.toString();
                 this.sanitize();
@@ -748,7 +748,7 @@ class FontsTable {
             rotationItem.setSimpleCombo('right', (evt) => {
                 evt.stopPropagation();
 
-                let rotation = (parseFloat(rotationItem.data) + 365) % 360;
+                let rotation = (parseFloat(rotationItem.data) + 361) % 360;
 
                 this.data[nRow]['rotation'] = rotation.toString();
                 this.sanitize();
